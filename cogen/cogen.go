@@ -114,6 +114,47 @@ func (c *Cogen) labelUplift(label string) ast.Expression {
 }
 
 func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
+	switch v := exp.(type) {
+	case *ast.CallExpression:
+		log.Fatal("exprtup: how is this call expression?")
+	case *ast.ArbitraryExpression:
+		log.Fatal("exprup: got arbitrary expression")
+	case *ast.Identifier:
+		if c.existsDelta(v) {
+			return &ast.ArbitraryExpression{
+				Token: newToken(token.IDENT, "list"),
+				Value: "'quote " + v.TokenLiteral(),
+			}
+		} else {
+			return &ast.Constant{
+				Token: newToken(token.CONSTANT, v.TokenLiteral()),
+				Value: v,
+			}
+		}
+	case ast.Value:
+		return &ast.Constant{
+			Token: newToken(token.CONSTANT, v.TokenLiteral()),
+			Value: v,
+		}
+	case *ast.InfixExpression:
+		v.Left = c.exprUplift(v.Left)
+		v.Right = c.exprUplift(v.Right)
+		v.Operator = "'" + v.Operator
+		return &ast.ArbitraryExpression{
+			Token: newToken(token.IDENT, "list"),
+			Value: v.String(),
+		}
+	case *ast.PrefixExpression:
+		v.Right = c.exprUplift(v.Right)
+		v.Operator = "'" + v.Operator
+		return &ast.ArbitraryExpression{
+			Token: newToken(token.IDENT, "list"),
+			Value: v.String(),
+		}
+	default:
+		log.Fatal("exprup: reached default via: %T", v)
+	}
+	return nil
 }
 
 func (c *Cogen) processBlock(stmt *ast.LabelStatement) {
@@ -277,7 +318,7 @@ func (c *Cogen) processRegularAssginment(stmt *ast.AssignmentStatement) {
 		c.addStatement(codeAssign(
 			&ast.ArbitraryExpression{
 				Token: newToken(token.IDENT, "o"),
-				Value: underlineAssign(stmt.Left, upliftE.String()),
+				Value: "code " + underlineAssign(stmt.Left, upliftE),
 			}))
 	}
 }
@@ -403,6 +444,10 @@ func codeAssign(right ast.Expression) *ast.AssignmentStatement {
 
 func underlineCall(x *ast.Identifier, l string) string {
 	return "(list '" + x.Value + "':=(list 'call " + l + "))"
+}
+
+func underlineAssign(x *ast.Identifier, exp ast.Expression) string {
+	return "(list '" + x.Value + "':=" + exp.String() + ")"
 }
 
 func getVars(exp ast.Expression) []*ast.Identifier {
