@@ -28,35 +28,13 @@ type Value interface {
 type Program struct {
 	Name       string
 	Variables  []*Identifier
-	Statements []Statement
+	Statements []*LabelStatement
 }
 
 type LabelStatement struct {
 	Token      token.Token // label token, updated in parser
 	Label      Label
 	Statements []Statement
-}
-
-func (p *Program) TokenLiteral() string {
-	if len(p.Statements) > 0 {
-		return p.Statements[0].TokenLiteral()
-	} else {
-		return ""
-	}
-}
-
-func (p *Program) String() string {
-	var out bytes.Buffer
-
-	for _, s := range p.Statements {
-		out.WriteString(s.String())
-	}
-	return out.String()
-}
-
-type Identifier struct {
-	Token token.Token
-	Value string
 }
 
 type Label struct {
@@ -72,12 +50,6 @@ type GotoStatement struct {
 type ReturnStatement struct {
 	Token       token.Token // return token
 	ReturnValue Expression
-}
-
-type CallExpression struct {
-	Token     token.Token // call
-	Label     Label
-	Variables []*Identifier
 }
 
 type IfStatement struct {
@@ -96,6 +68,22 @@ type AssignmentStatement struct {
 	Left  *Identifier
 	Token token.Token // :=
 	Right Expression  // Some value type
+}
+
+type Identifier struct {
+	Token token.Token
+	Value string
+}
+
+type CallExpression struct {
+	Token     token.Token // call
+	Label     Label
+	Variables []*Identifier
+}
+
+type ArbitraryExpression struct {
+	Token token.Token // Identifier
+	Value string
 }
 
 type IntegerLiteral struct {
@@ -124,6 +112,29 @@ type List struct {
 type Constant struct {
 	Token token.Token // '
 	Value Value
+}
+
+func (p *Program) TokenLiteral() string {
+	if len(p.Statements) > 0 {
+		return p.Statements[0].TokenLiteral()
+	} else {
+		return ""
+	}
+}
+
+func (p *Program) String() string {
+	var out bytes.Buffer
+
+	for _, s := range p.Statements {
+		out.WriteString(s.String())
+	}
+	return out.String()
+}
+
+func (ae *ArbitraryExpression) expressionNode()      {}
+func (ae *ArbitraryExpression) TokenLiteral() string { return ae.Token.Literal }
+func (ae *ArbitraryExpression) String() string {
+	return ae.TokenLiteral() + " " + ae.Value
 }
 
 func (cs *Constant) valueNode()           {}
@@ -270,7 +281,9 @@ func (is *IfStatement) TokenLiteral() string {
 func (is *IfStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(is.TokenLiteral() + " ")
-	out.WriteString(is.Cond.String() + " ")
+	out.WriteString("(")
+	out.WriteString(is.Cond.String())
+	out.WriteString(") ")
 	out.WriteString(is.LabelTrue.String() + " ")
 	out.WriteString(is.LabelFalse.String() + " ")
 	return out.String()
@@ -284,6 +297,10 @@ func (i *Identifier) TokenLiteral() string {
 
 func (i *Identifier) String() string {
 	return i.Value
+}
+
+func (i *Identifier) Equal(o *Identifier) bool {
+	return i.String() == o.String()
 }
 
 func (ll *Label) expressionNode()      {}
