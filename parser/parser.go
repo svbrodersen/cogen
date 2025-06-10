@@ -441,7 +441,7 @@ func (p *Parser) parseGroupedExpression() ast.Expression {
 
 func (p *Parser) ParseProgram() *ast.Program {
 	program := &ast.Program{}
-	program.Statements = []ast.Statement{}
+	program.Statements = []*ast.LabelStatement{}
 	program.Name, program.Variables = p.parseFunction()
 
 	for p.curToken.Type != token.EOF {
