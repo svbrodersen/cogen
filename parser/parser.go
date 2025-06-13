@@ -169,7 +169,7 @@ func (p *Parser) parseCall() *ast.CallExpression {
 	p.nextToken()
 	stmt.Label = p.parseLabel()
 	p.nextToken()
-	for p.curToken.Type != token.SEMICOLON && p.curToken.Type != token.EOF {
+	for !p.peakTokenIs(token.SEMICOLON) && !p.peakTokenIs(token.EOF) {
 		stmt.Variables = append(stmt.Variables, p.requireIdentifier())
 		p.nextToken()
 	}

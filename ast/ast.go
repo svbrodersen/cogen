@@ -183,13 +183,9 @@ func (ce *CallExpression) String() string {
 	var out bytes.Buffer
 
 	out.WriteString(ce.TokenLiteral() + " ")
-	out.WriteString(ce.Label.String() + " ")
-	for i, ident := range ce.Variables {
-		if i == len(ce.Variables)-1 {
-			out.WriteString(ident.String() + ";")
-		} else {
-			out.WriteString(ident.String() + " ")
-		}
+	out.WriteString(ce.Label.String())
+	for _, ident := range ce.Variables {
+		out.WriteString(" " + ident.String())
 	}
 	return out.String()
 }
@@ -222,9 +218,9 @@ func (ls *LabelStatement) String() string {
 	out.WriteString(ls.Label.String() + ": ")
 	for i, stmt := range ls.Statements {
 		if i == len(ls.Statements)-1 {
-			out.WriteString(stmt.String() + ";")
+			out.WriteString(stmt.String() + ";\n")
 		} else {
-			out.WriteString(stmt.String() + ";\n  ")
+			out.WriteString(stmt.String() + ";\n\t")
 		}
 	}
 	return out.String()
@@ -255,7 +251,6 @@ func (rs *ReturnStatement) String() string {
 	if rs.ReturnValue != nil {
 		out.WriteString(rs.ReturnValue.String())
 	}
-	out.WriteString(";")
 	return out.String()
 }
 
@@ -269,7 +264,6 @@ func (gt *GotoStatement) String() string {
 
 	out.WriteString(gt.TokenLiteral() + " ")
 	out.WriteString(gt.Label.String())
-	out.WriteString(";")
 	return out.String()
 }
 
@@ -285,7 +279,7 @@ func (is *IfStatement) String() string {
 	out.WriteString(is.Cond.String())
 	out.WriteString(") ")
 	out.WriteString(is.LabelTrue.String() + " ")
-	out.WriteString(is.LabelFalse.String() + " ")
+	out.WriteString(is.LabelFalse.String())
 	return out.String()
 }
 
