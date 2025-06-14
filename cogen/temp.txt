@@ -1,34 +1,17 @@
-code:=newheader '(n) list '0 m;
+2025/06/14 14:26:46 0-0-m: code:=newheader '(n) list '0 m;
         goto 1-0-m;
 2: return code;
+
 1-ack-m: if (done? (list 'ack m) code) 2 3-ack-m;
 3-ack-m: code:=newblock code (list 'ack m);
         goto 4-ack-m;
 4-ack-m: if ((m = 0)) 4-done-m 4-next-m;
 4-done-m: return o code (list 'return list ('n + '1));
 4-next-m: code:=call 1-ack0-m;
-        code:=call 1-ack0-m-n;
+        code:=call 1-ack1-m;
         return o code(list 'if list ('n = '0) list 'ack0 m list 'ack1 m);
-1-ack0-m: if (done? (list 'ack0 m) code) 2 3-ack0-m;
-3-ack0-m: code:=newblock code (list 'ack0 m);
-        goto 4-ack0-m;
-4-ack0-m: n:=1;
-        m:=(m - 1);
-        n:=call 5-ack-m-n;
-        return o code (list 'return list 'quote n);
-1-ack0-m-n: if (done? (list 'ack0 m n) code) 2 3-ack0-m-n;
-3-ack0-m-n: code:=newblock code (list 'ack0 m n);
-        goto 4-ack0-m-n;
-4-ack0-m-n: n:=1;
-        m:=(m - 1);
-        n:=call 5-ack-m-n;
-        return o code (list 'return list 'quote n);
-1-next-m: if (done? (list 'next m) code) 2 3-next-m;
-3-next-m: code:=newblock code (list 'next m);
-        goto 4-next-m;
-1-done-m: if (done? (list 'done m) code) 2 3-done-m;
-3-done-m: code:=newblock code (list 'done m);
-        goto 4-done-m;
+
+
 1-ack1-m: if (done? (list 'ack1 m) code) 2 3-ack1-m;
 3-ack1-m: code:=newblock code (list 'ack1 m);
         goto 4-ack1-m;
@@ -37,22 +20,24 @@ code:=newheader '(n) list '0 m;
         m:=(m - 1);
         n:=call 5-ack-m-n;
         return o code (list 'return list 'quote n);
-1-ack2-m-n: if (done? (list 'ack2 m n) code) 2 3-ack2-m-n;
-3-ack2-m-n: code:=newblock code (list 'ack2 m n);
-        goto 4-ack2-m-n;
-4-ack2-m-n: m:=(m - 1);
+
+1-ack0-m: if (done? (list 'ack0 m) code) 2 3-ack0-m;
+3-ack0-m: code:=newblock code (list 'ack0 m);
+        goto 4-ack0-m;
+4-ack0-m: n:=1;
+        m:=(m - 1);
         n:=call 5-ack-m-n;
         return o code (list 'return list 'quote n);
 
 
-5-ack-m-n: if ((m = 0)) 5-done-m-n 5-next-m-n;
 5-done-m-n: return ('n + '1);
-5-next-m-n: if (('n = '0)) 5-ack0-m-n 5-ack1-m-n;
+5-ack2-m-n: m:=(m - 1);
+        n:=call ack m;
+        return n;
 5-ack0-m-n: n:=1;
         goto 5-ack2-m-n;
 5-ack1-m-n: n:=(n - 1);
         n:=call ack m;
         goto 5-ack2-m-n;
-5-ack2-m-n: m:=(m - 1);
-        n:=call ack m;
-        return n;
+5-next-m-n: if (('n = '0)) 5-ack0-m-n 5-ack1-m-n;
+5-ack-m-n: if ((m = 0)) 5-done-m-n 5-next-m-n;

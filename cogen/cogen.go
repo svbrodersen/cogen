@@ -42,9 +42,8 @@ func (c *Cogen) Gen(delta []int) *ast.Program {
 
 	c.processHeader(c.origProg)
 
-	for _, stmt := range c.origProg.Statements {
-		c.processPoly(stmt)
-	}
+	// Start the process on the first statement
+	c.processPoly(c.origProg.Statements[0])
 
 	return c.state.extension
 }
@@ -155,6 +154,7 @@ func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 			Value: v,
 		}
 	case *ast.InfixExpression:
+		log.Println("exprUpLift Infix: ", exp)
 		v.Left = c.exprUplift(v.Left)
 		v.Right = c.exprUplift(v.Right)
 		return &ast.ArbitraryExpression{
@@ -176,6 +176,7 @@ func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 func (c *Cogen) processBlock(stmt *ast.LabelStatement) *ast.LabelStatement {
 	l := c.newLabel(4, stmt.Label.Value)
 	if c.existsLabel(&l.Label) {
+		log.Printf("label %s exists", l)
 		l, err := c.getCurLabelStatement(&l.Label)
 		if err != nil {
 			log.Fatalf("block: %v", err)
@@ -243,9 +244,7 @@ func (c *Cogen) processPoly(stmt *ast.LabelStatement) *ast.LabelStatement {
 		},
 	}
 	c.state.extension.Statements = append(c.state.extension.Statements, l1, l3)
-	cur_state := c.saveState()
 	c.processBlock(stmt)
-	c.state = cur_state
 	return l1
 }
 
@@ -344,26 +343,26 @@ func (c *Cogen) processRegularAssginment(stmt *ast.AssignmentStatement) {
 	vars := getVars(stmt.Right)
 
 	if c.isSubsetDelta(vars) {
-		c.addDelta(stmt.Left)
 		c.addStatement(&ast.AssignmentStatement{
 			Left:  newIdentifier(stmt.Left.Value),
 			Token: newToken(token.ASSIGN, ":="),
 			Right: stmt.Right,
 		})
+		c.addDelta(stmt.Left)
 	} else {
-		upliftE := c.exprUplift(stmt.Left)
+		upliftE := c.exprUplift(stmt.Right)
 		c.addStatement(codeAssign(
 			&ast.ArbitraryExpression{
 				Token: newToken(token.IDENT, "o"),
 				Value: "code " + underlineAssign(stmt.Left, upliftE),
 			}))
+		c.removeDelta(stmt.Left)
 	}
 }
 
 func (c *Cogen) processCallAssginment(stmt *ast.AssignmentStatement, callExp *ast.CallExpression) {
 	// live exp
 	if c.isSubsetDelta(callExp.Variables) {
-		c.addDelta(stmt.Left)
 		c.addStatement(
 			&ast.AssignmentStatement{
 				Left:  stmt.Left,
@@ -375,9 +374,19 @@ func (c *Cogen) processCallAssginment(stmt *ast.AssignmentStatement, callExp *as
 				},
 			},
 		)
+		c.addDelta(stmt.Left)
 	} else {
+		// first process poly on the label
+		callStmt, err := c.getOrigLabelStatement(&callExp.Label)
+		if err != nil {
+			log.Fatalf("call assignment: %v", err)
+		}
+		curState := c.saveState()
+		c.processPoly(callStmt)
+		c.state = curState
+
+		// then add our code
 		upliftL := c.labelUplift(callExp.Label.Value)
-		c.removeDelta(stmt.Left)
 		l1 := c.newLabel(1, callExp.Label.Value)
 		c.addStatement(
 			codeAssign(&ast.CallExpression{
@@ -392,13 +401,8 @@ func (c *Cogen) processCallAssginment(stmt *ast.AssignmentStatement, callExp *as
 				Value: underlineCall(stmt.Left, upliftL.String()),
 			}))
 
-		callStmt, err := c.getOrigLabelStatement(&callExp.Label)
-		if err != nil {
-			log.Fatalf("call assignment: %v", err)
-		}
-		cur_state := c.saveState()
-		c.processPoly(callStmt)
-		c.state = cur_state
+		// and update delta
+		c.removeDelta(stmt.Left)
 	}
 }
 
@@ -423,9 +427,10 @@ func (c *Cogen) getCurLabelStatement(stmt *ast.Label) (*ast.LabelStatement, erro
 }
 
 func (c *Cogen) processIf(stmt *ast.IfStatement) {
+	log.Printf("%s: if start", &c.state.curStatement.Label)
 	variables := getVars(stmt.Cond)
 	if c.isSubsetDelta(variables) {
-		cur_state := c.saveState()
+		curState := c.saveState()
 		// process true label statement
 		subStmt, err := c.getOrigLabelStatement(&stmt.LabelTrue)
 		if err != nil {
@@ -433,7 +438,9 @@ func (c *Cogen) processIf(stmt *ast.IfStatement) {
 		}
 		l1 := c.processBlock(subStmt)
 
-		c.state = cur_state
+		// Reset state before we process false
+		c.state = curState
+		curState = c.saveState()
 
 		// process false label statement
 		subStmt, err = c.getOrigLabelStatement(&stmt.LabelFalse)
@@ -443,7 +450,8 @@ func (c *Cogen) processIf(stmt *ast.IfStatement) {
 		l2 := c.processBlock(subStmt)
 
 		// Reset to the current block, and add the if statement
-		c.state = cur_state
+		c.state = curState
+		log.Printf("%s: if addStatement", &c.state.curStatement.Label)
 		c.addStatement(&ast.IfStatement{
 			Token:      stmt.Token,
 			Cond:       stmt.Cond,
@@ -455,21 +463,23 @@ func (c *Cogen) processIf(stmt *ast.IfStatement) {
 		lu2 := c.labelUplift(stmt.LabelFalse.String())
 		eu := c.exprUplift(stmt.Cond)
 
-		cur_state := c.saveState()
+		curState := c.saveState()
 		l1, err := c.getOrigLabelStatement(&stmt.LabelTrue)
 		if err != nil {
 			log.Fatalf("if statement: %v", err)
 		}
 		l1 = c.processPoly(l1)
-		c.state = cur_state
 
-		l2, err := c.getOrigLabelStatement(&stmt.LabelTrue)
+		c.state = curState
+		curState = c.saveState()
+		l2, err := c.getOrigLabelStatement(&stmt.LabelFalse)
 		if err != nil {
 			log.Fatalf("if statement: %v", err)
 		}
 		l2 = c.processPoly(l2)
 
-		c.state = cur_state
+		c.state = curState
+		log.Printf("%s: if addStatement", &c.state.curStatement.Label)
 		c.addStatement(
 			codeAssign(&ast.CallExpression{
 				Token: token.Token{
@@ -522,11 +532,13 @@ func (c *Cogen) processReturn(stmt *ast.ReturnStatement) {
 }
 
 func (c *Cogen) processGoto(stmt *ast.GotoStatement) {
-	og, err := c.getOrigLabelStatement(&stmt.Label)
+	ogStmt, err := c.getOrigLabelStatement(&stmt.Label)
 	if err != nil {
 		log.Fatalf("goto: %v", err)
 	}
-	c.processBody(og.Statements)
+	curState := c.saveState()
+	c.processBody(ogStmt.Statements)
+	c.state = curState
 }
 
 func (c *Cogen) isSubsetDelta(vars []*ast.Identifier) bool {
@@ -540,8 +552,8 @@ func (c *Cogen) isSubsetDelta(vars []*ast.Identifier) bool {
 
 func (c *Cogen) existsDelta(item *ast.Identifier) bool {
 	_, found := c.state.delta[item.Value]
-	log.Printf("exists delta: %s, item: %s result: %v", c.state.delta, item.Value, found)
-	log.Println("Current label statement:\n", c.state.curStatement)
+	// log.Printf("exists delta: %s, item: %s result: %v", c.state.delta, item.Value, found)
+	// log.Println("Current label statement:\n", c.state.curStatement)
 	return found
 }
 
@@ -555,7 +567,6 @@ func (c *Cogen) existsLabel(label *ast.Label) bool {
 }
 
 func (c *Cogen) addDelta(item *ast.Identifier) {
-	log.Println("add delta: ", item)
 	c.state.delta[item.Value] = item
 }
 
