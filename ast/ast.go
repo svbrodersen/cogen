@@ -3,6 +3,7 @@ package ast
 import (
 	"bytes"
 	"cogen/token"
+	"strings"
 )
 
 type Node interface {
@@ -91,6 +92,12 @@ type IntegerLiteral struct {
 	Value int64
 }
 
+type FunctionCall struct {
+	Token     token.Token // Identifier token
+	Function  Expression  // Identifier
+	Arguments []Expression
+}
+
 type PrefixExpression struct {
 	Token    token.Token // prefix token e.g. hd
 	Operator string
@@ -128,6 +135,21 @@ func (p *Program) String() string {
 	for _, s := range p.Statements {
 		out.WriteString(s.String())
 	}
+	return out.String()
+}
+
+func (fc *FunctionCall) expressionNode()      {}
+func (fc *FunctionCall) TokenLiteral() string { return fc.Token.Literal }
+func (fc *FunctionCall) String() string {
+	var out bytes.Buffer
+	args := []string{}
+	for _, a := range fc.Arguments {
+		args = append(args, a.String())
+	}
+	out.WriteString(fc.Function.String())
+	out.WriteString("(")
+	out.WriteString(strings.Join(args, ", "))
+	out.WriteString(")")
 	return out.String()
 }
 

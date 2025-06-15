@@ -12,9 +12,6 @@ var keywords = map[string]TokenType{
 	"if":     IF,
 	"else":   ELSE,
 	"return": RETURN,
-	"hd":     HD,
-	"tl":     TL,
-	"cons":   CONS,
 	"call":   CALL,
 	"true":   TRUE,
 	"false":  FALSE,
@@ -50,9 +47,6 @@ const (
 	LABEL    = "LABEL"
 
 	// Operators
-	HD          = "hd"
-	TL          = "tl"
-	CONS        = "cons"
 	EQUAL       = "="
 	NOT_EQUAL   = "!="
 	LESSTHAN    = "<"

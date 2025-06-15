@@ -5,6 +5,7 @@ import (
 	"cogen/lexer"
 	"cogen/token"
 	"fmt"
+	"log"
 	"strconv"
 )
 
@@ -16,6 +17,7 @@ const (
 	SUM
 	PRODUCT
 	PREFIX
+	FUNCCALL
 )
 
 var precedence = map[token.TokenType]int{
@@ -27,6 +29,7 @@ var precedence = map[token.TokenType]int{
 	token.SUB:         SUM,
 	token.ASTERISK:    PRODUCT,
 	token.SLASH:       PRODUCT,
+	token.LPAREN:      FUNCCALL,
 }
 
 type (
@@ -64,14 +67,17 @@ func New(l lexer.Lexer) *Parser {
 	p.registerValue(token.QUOTE, p.parseConstant)
 
 	// prefix
+	p.registerPrefix(token.IDENT, p.parseValueExpression)
+	p.registerPrefix(token.NUMBER, p.parseValueExpression)
+	p.registerPrefix(token.QUOTE, p.parseValueExpression)
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 	p.registerPrefix(token.SUB, p.parsePrefixExpression)
-	p.registerPrefix(token.HD, p.parsePrefixExpression)
-	p.registerPrefix(token.TL, p.parsePrefixExpression)
 	p.registerPrefix(token.CONS, p.parsePrefixExpression)
+
 	// infix
 	p.registerInfix(token.ADD, p.parseInfixExpression)
+	p.registerInfix(token.LPAREN, p.parseFunctionCall)
 	p.registerInfix(token.SUB, p.parseInfixExpression)
 	p.registerInfix(token.SLASH, p.parseInfixExpression)
 	p.registerInfix(token.ASTERISK, p.parseInfixExpression)
@@ -132,6 +138,7 @@ func (p *Parser) peakError(t token.TokenType) {
 }
 
 func (p *Parser) noPrefixParseFnError(t token.TokenType) {
+	log.Println(p.peakToken)
 	msg := fmt.Sprintf("no prefix parse function for %s found", t)
 	p.errors = append(p.errors, msg)
 }
@@ -188,13 +195,13 @@ func (p *Parser) parseList() ast.Value {
 	p.nextToken()
 	var values []ast.Value
 	// loop as long as we don't have the closing of the list
-	for !p.curTokenIs(token.RPAREN) && !p.curTokenIs(token.EOF) {
+	for !p.curTokenIs(token.RPAREN) {
 		value := p.parseValueExpression()
 		if value == nil {
 			msg := fmt.Sprintf("list: could not parse %q as integer", p.curToken.Literal)
 			p.errors = append(p.errors, msg)
 		}
-		values = append(values, p.parseValueExpression())
+		values = append(values, p.parseValueExpression().(ast.Value))
 		p.nextToken()
 
 		// If we are in the middle of the list, then we remove the comma
@@ -232,7 +239,7 @@ func (p *Parser) parseConstant() ast.Value {
 	stmt := &ast.Constant{Token: p.curToken}
 	p.nextToken()
 
-	stmt.Value = p.parseValueExpression()
+	stmt.Value = p.parseValueExpression().(ast.Value)
 	return stmt
 }
 
@@ -302,13 +309,11 @@ func (p *Parser) parseIfStatement() *ast.IfStatement {
 	stmt.Cond = p.parseExpression(LOWEST)
 	p.nextToken()
 
-	// Skip over goto
-	if !p.curTokenIs(token.GOTO) {
-		msg := fmt.Sprintf("expected goto, got %s", p.curToken)
-		p.errors = append(p.errors, msg)
-		return nil
+	// Skip over goto, if it is there
+	if p.curTokenIs(token.GOTO) {
+		p.nextToken()
 	}
-	p.nextToken()
+
 	// Parse true label
 	stmt.LabelTrue = p.parseLabel()
 	p.nextToken()
@@ -319,6 +324,11 @@ func (p *Parser) parseIfStatement() *ast.IfStatement {
 		return nil
 	}
 	p.nextToken()
+
+	// Skip over goto, if it is there
+	if p.curTokenIs(token.GOTO) {
+		p.nextToken()
+	}
 
 	// parse false label
 	stmt.LabelFalse = p.parseLabel()
@@ -375,17 +385,13 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 func (p *Parser) parseExpression(precedence int) ast.Expression {
 	// First attempt to parse ValuepExpression. Otherwise parse prefix
 	var leftExp ast.Expression
-	value := p.parseValueExpression()
-	if value == nil {
-		prefix := p.prefixParseFns[p.curToken.Type]
-		if prefix == nil {
-			p.noPrefixParseFnError(p.curToken.Type)
-			return nil
-		}
-		leftExp = prefix()
-	} else {
-		leftExp = value
+
+	prefix := p.prefixParseFns[p.curToken.Type]
+	if prefix == nil {
+		p.noPrefixParseFnError(p.curToken.Type)
+		return nil
 	}
+	leftExp = prefix()
 	for !p.peakTokenIs(token.SEMICOLON) && precedence < p.peakPrecedence() {
 		infix := p.infixParseFns[p.peakToken.Type]
 		if infix == nil {
@@ -397,7 +403,7 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 	return leftExp
 }
 
-func (p *Parser) parseValueExpression() ast.Value {
+func (p *Parser) parseValueExpression() ast.Expression {
 	value := p.valueParseFns[p.curToken.Type]
 	if value == nil {
 		return nil
@@ -413,6 +419,31 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 	p.nextToken()
 	expression.Right = p.parseExpression(PREFIX)
 	return expression
+}
+
+func (p *Parser) parseFunctionCall(function ast.Expression) ast.Expression {
+	exp := &ast.FunctionCall{Token: p.curToken, Function: function}
+	exp.Arguments = p.parseCallArguments()
+	return exp
+}
+
+func (p *Parser) parseCallArguments() []ast.Expression {
+	args := []ast.Expression{}
+	if p.peakTokenIs(token.RPAREN) {
+		p.nextToken()
+		return args
+	}
+	p.nextToken()
+	args = append(args, p.parseExpression(LOWEST))
+	for p.peakTokenIs(token.COMMA) {
+		p.nextToken()
+		p.nextToken()
+		args = append(args, p.parseExpression(LOWEST))
+	}
+	if !p.requirePeak(token.RPAREN) {
+		return nil
+	}
+	return args
 }
 
 func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {

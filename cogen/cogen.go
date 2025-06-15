@@ -65,6 +65,7 @@ func (c *Cogen) processHeader(prog *ast.Program) {
 	initLabel := c.newLabel(0, "0")
 	gotoLabel := c.newLabel(1, "0")
 	codeIdentifier := newIdentifier("code")
+	newHeader := newIdentifier("newheader")
 
 	initLabel.Statements = []ast.Statement{
 		&ast.AssignmentStatement{
@@ -73,12 +74,10 @@ func (c *Cogen) processHeader(prog *ast.Program) {
 				Type:    token.ASSIGN,
 				Literal: ":=",
 			},
-			Right: &ast.ArbitraryExpression{
-				Token: token.Token{
-					Type:    token.IDENT,
-					Literal: "newheader",
-				},
-				Value: "'(" + dynamicVar.String() + ")" + " " + upliftL.String(),
+			Right: &ast.FunctionCall{
+				Token:     newHeader.Token,
+				Function:  newHeader,
+				Arguments: []ast.Expression{dynamicVar, upliftL},
 			},
 		},
 		&ast.GotoStatement{
@@ -154,11 +153,12 @@ func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 			Value: v,
 		}
 	case *ast.InfixExpression:
-		v.Left = c.exprUplift(v.Left)
-		v.Right = c.exprUplift(v.Right)
+		newExp := *v
+		newExp.Left = c.exprUplift(v.Left)
+		newExp.Right = c.exprUplift(v.Right)
 		return &ast.ArbitraryExpression{
 			Token: newToken(token.IDENT, "list"),
-			Value: v.String(),
+			Value: newExp.String(),
 		}
 	case *ast.PrefixExpression:
 		v.Right = c.exprUplift(v.Right)
@@ -166,8 +166,15 @@ func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 			Token: newToken(token.IDENT, "list"),
 			Value: v.String(),
 		}
+	case *ast.FunctionCall:
+		newStmt := &ast.FunctionCall{
+			Token:    v.Token,
+			Function: v.Function,
+		}
+		copy(newStmt.Arguments, v.Arguments)
+		return newStmt
 	default:
-		log.Fatalf("exprup: reached default via: %T", v)
+		return v
 	}
 	return nil
 }
@@ -206,15 +213,15 @@ func (c *Cogen) processPoly(stmt *ast.LabelStatement) *ast.LabelStatement {
 
 	l3 := c.newLabel(3, stmt.Label.Value)
 	l4 := c.newLabel(4, stmt.Label.Value)
+	doneFunc := newIdentifier("done?")
+	code := newIdentifier("code")
 	l1.Statements = []ast.Statement{
 		&ast.IfStatement{
 			Token: newToken(token.IF, "if"),
-			Cond: &ast.ArbitraryExpression{
-				Token: token.Token{
-					Type:    token.IDENT,
-					Literal: "done?",
-				},
-				Value: "(" + upliftL.String() + ")" + " code",
+			Cond: &ast.FunctionCall{
+				Token:     doneFunc.Token,
+				Function:  doneFunc,
+				Arguments: []ast.Expression{upliftL, code},
 			},
 			LabelTrue: ast.Label{
 				Token: newToken(token.IDENT, "2"),
@@ -224,13 +231,15 @@ func (c *Cogen) processPoly(stmt *ast.LabelStatement) *ast.LabelStatement {
 		},
 	}
 
+	newblock := newIdentifier("newblock")
 	l3.Statements = []ast.Statement{
 		&ast.AssignmentStatement{
 			Left:  newIdentifier("code"),
 			Token: newToken(token.ASSIGN, ":="),
-			Right: &ast.ArbitraryExpression{
-				Token: newToken(token.IDENT, "newblock"),
-				Value: "code " + "(" + upliftL.String() + ")",
+			Right: &ast.FunctionCall{
+				Token:     newblock.Token,
+				Function:  newblock,
+				Arguments: []ast.Expression{code, upliftL},
 			},
 		},
 		&ast.GotoStatement{
@@ -351,10 +360,14 @@ func (c *Cogen) processRegularAssginment(stmt *ast.AssignmentStatement) {
 		c.addDelta(stmt.Left)
 	} else {
 		upliftE := c.exprUplift(stmt.Right)
+		code := newIdentifier("code")
+		o := newIdentifier("o")
+		leftCpy := *stmt.Left
 		c.addStatement(codeAssign(
-			&ast.ArbitraryExpression{
-				Token: newToken(token.IDENT, "o"),
-				Value: "code " + underlineAssign(stmt.Left, upliftE),
+			&ast.FunctionCall{
+				Token:     o.Token,
+				Function:  o,
+				Arguments: []ast.Expression{code, underlineAssign(&leftCpy, upliftE)},
 			}))
 		c.removeDelta(stmt.Left)
 	}
@@ -363,9 +376,10 @@ func (c *Cogen) processRegularAssginment(stmt *ast.AssignmentStatement) {
 func (c *Cogen) processCallAssginment(stmt *ast.AssignmentStatement, callExp *ast.CallExpression) {
 	// live exp
 	if c.isSubsetDelta(callExp.Variables) {
+		leftCpy := *stmt.Left
 		c.addStatement(
 			&ast.AssignmentStatement{
-				Left:  stmt.Left,
+				Left:  &leftCpy,
 				Token: stmt.Token,
 				Right: &ast.CallExpression{
 					Token:     newToken(token.CALL, "call"),
@@ -395,10 +409,14 @@ func (c *Cogen) processCallAssginment(stmt *ast.AssignmentStatement, callExp *as
 
 				Variables: []*ast.Identifier{},
 			}))
+		code := newIdentifier("code")
+		o := newIdentifier("o")
+		leftCpy := *stmt.Left
 		c.addStatement(codeAssign(
-			&ast.ArbitraryExpression{
-				Token: newToken(token.IDENT, "o"),
-				Value: underlineCall(stmt.Left, upliftL.String()),
+			&ast.FunctionCall{
+				Token:     o.Token,
+				Function:  o,
+				Arguments: []ast.Expression{code, underlineCall(&leftCpy, upliftL)},
 			}))
 
 		// and update delta
@@ -429,6 +447,11 @@ func (c *Cogen) getCurLabelStatement(stmt *ast.Label) (*ast.LabelStatement, erro
 func (c *Cogen) processIf(stmt *ast.IfStatement) {
 	variables := getVars(stmt.Cond)
 	if c.isSubsetDelta(variables) {
+		newStmt := &ast.IfStatement{
+			Token: stmt.Token,
+			Cond:  stmt.Cond,
+		}
+		c.addStatement(newStmt)
 		curState := c.saveState()
 		// process true label statement
 		subStmt, err := c.getOrigLabelStatement(&stmt.LabelTrue)
@@ -439,7 +462,6 @@ func (c *Cogen) processIf(stmt *ast.IfStatement) {
 
 		// Reset state before we process false
 		c.state = curState
-		curState = c.saveState()
 
 		// process false label statement
 		subStmt, err = c.getOrigLabelStatement(&stmt.LabelFalse)
@@ -448,14 +470,10 @@ func (c *Cogen) processIf(stmt *ast.IfStatement) {
 		}
 		l2 := c.processBlock(subStmt)
 
-		// Reset to the current block, and add the if statement
+		// Reset to the current block, and add the labels
 		c.state = curState
-		c.addStatement(&ast.IfStatement{
-			Token:      stmt.Token,
-			Cond:       stmt.Cond,
-			LabelTrue:  l1.Label,
-			LabelFalse: l2.Label,
-		})
+		newStmt.LabelTrue = l1.Label
+		newStmt.LabelFalse = l2.Label
 	} else {
 		lu1 := c.labelUplift(stmt.LabelTrue.String())
 		lu2 := c.labelUplift(stmt.LabelFalse.String())
@@ -497,17 +515,17 @@ func (c *Cogen) processIf(stmt *ast.IfStatement) {
 				Variables: []*ast.Identifier{},
 			}))
 
+		o := newIdentifier("o")
+		code := newIdentifier("code")
 		c.addStatement(&ast.ReturnStatement{
 			Token: token.Token{
 				Type:    token.RETURN,
 				Literal: "return",
 			},
-			ReturnValue: &ast.ArbitraryExpression{
-				Token: token.Token{
-					Type:    token.IDENT,
-					Literal: "o",
-				},
-				Value: "code" + underlineIf(eu, lu1.String(), lu2.String()),
+			ReturnValue: &ast.FunctionCall{
+				Token:     o.Token,
+				Function:  o,
+				Arguments: []ast.Expression{code, underlineIf(eu, lu1, lu2)},
 			},
 		})
 
@@ -516,14 +534,14 @@ func (c *Cogen) processIf(stmt *ast.IfStatement) {
 
 func (c *Cogen) processReturn(stmt *ast.ReturnStatement) {
 	eu := c.exprUplift(stmt.ReturnValue)
+	o := newIdentifier("o")
+	code := newIdentifier("code")
 	c.addStatement(&ast.ReturnStatement{
 		Token: stmt.Token,
-		ReturnValue: &ast.ArbitraryExpression{
-			Token: token.Token{
-				Type:    token.IDENT,
-				Literal: "o",
-			},
-			Value: "code " + underlineReturn(eu),
+		ReturnValue: &ast.FunctionCall{
+			Token:     o.Token,
+			Function:  o,
+			Arguments: []ast.Expression{code, underlineReturn(eu)},
 		},
 	})
 }
@@ -562,7 +580,8 @@ func (c *Cogen) existsLabel(label *ast.Label) bool {
 }
 
 func (c *Cogen) addDelta(item *ast.Identifier) {
-	c.state.delta[item.Value] = item
+	itemCpy := *item
+	c.state.delta[item.Value] = &itemCpy
 }
 
 func (c *Cogen) removeDelta(item *ast.Identifier) {
@@ -611,20 +630,32 @@ func codeAssign(right ast.Expression) *ast.AssignmentStatement {
 	}
 }
 
-func underlineCall(x *ast.Identifier, l string) string {
-	return "(list '" + x.Value + "':=(list 'call " + l + "))"
+func underlineCall(x *ast.Identifier, l ast.Expression) ast.Expression {
+	return &ast.ArbitraryExpression{
+		Token: newToken(token.IDENT, "list"),
+		Value: "'" + x.Value + " ':= (list 'call " + l.String() + ")",
+	}
 }
 
-func underlineAssign(x *ast.Identifier, exp ast.Expression) string {
-	return "(list '" + x.Value + "':=" + exp.String() + ")"
+func underlineAssign(x *ast.Identifier, exp ast.Expression) ast.Expression {
+	return &ast.ArbitraryExpression{
+		Token: newToken(token.IDENT, "list"),
+		Value: "'" + x.Value + " ':= " + exp.String(),
+	}
 }
 
-func underlineIf(e ast.Expression, l1 string, l2 string) string {
-	return "(list 'if " + e.String() + " " + l1 + " " + l2 + ")"
+func underlineIf(e ast.Expression, l1 ast.Expression, l2 ast.Expression) ast.Expression {
+	return &ast.ArbitraryExpression{
+		Token: newToken(token.IDENT, "list"),
+		Value: "'" + e.String() + " " + l1.String() + " " + l2.String(),
+	}
 }
 
-func underlineReturn(e ast.Expression) string {
-	return "(list 'return " + e.String() + ")"
+func underlineReturn(e ast.Expression) ast.Expression {
+	return &ast.ArbitraryExpression{
+		Token: newToken(token.IDENT, "list 'return"),
+		Value: e.String(),
+	}
 }
 
 func getVars(exp ast.Expression) []*ast.Identifier {
@@ -632,10 +663,8 @@ func getVars(exp ast.Expression) []*ast.Identifier {
 	vars := make(map[*ast.Identifier]struct{})
 
 	switch v := exp.(type) {
-	case *ast.CallExpression:
-		log.Fatal("how is this call expression?")
 	case *ast.ArbitraryExpression:
-		log.Fatal("getVars: got arbitrary expression")
+		log.Fatalf("getVars: got arbitrary expression: %s", exp)
 	case *ast.PrefixExpression:
 		keys = append(keys, getVars(v.Right)...)
 	case *ast.InfixExpression:
@@ -647,12 +676,20 @@ func getVars(exp ast.Expression) []*ast.Identifier {
 		}
 	case *ast.Constant:
 		keys = append(keys, getVars(v.Value)...)
+	case *ast.FunctionCall:
+		for _, item := range v.Arguments {
+			keys = append(keys, getVars(item)...)
+		}
 	case *ast.Identifier:
 		vars[v] = struct{}{}
+	default:
+		return nil
 	}
 
 	for i := range vars {
-		keys = append(keys, i)
+		if i != nil {
+			keys = append(keys, i)
+		}
 	}
 	return keys
 }
