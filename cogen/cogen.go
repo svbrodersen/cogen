@@ -154,7 +154,6 @@ func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 			Value: v,
 		}
 	case *ast.InfixExpression:
-		log.Println("exprUpLift Infix: ", exp)
 		v.Left = c.exprUplift(v.Left)
 		v.Right = c.exprUplift(v.Right)
 		return &ast.ArbitraryExpression{
@@ -176,7 +175,6 @@ func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 func (c *Cogen) processBlock(stmt *ast.LabelStatement) *ast.LabelStatement {
 	l := c.newLabel(4, stmt.Label.Value)
 	if c.existsLabel(&l.Label) {
-		log.Printf("label %s exists", l)
 		l, err := c.getCurLabelStatement(&l.Label)
 		if err != nil {
 			log.Fatalf("block: %v", err)
@@ -286,6 +284,9 @@ func (c *Cogen) copyBlock(stmt *ast.LabelStatement) *ast.Label {
 		return &prev.Label
 	}
 
+	// Then we add the statement
+	c.state.extension.Statements = append(c.state.extension.Statements, newStmt)
+
 	// Otherwise, copy it over
 	for i, item := range stmt.Statements {
 		switch v := item.(type) {
@@ -310,7 +311,6 @@ func (c *Cogen) copyBlock(stmt *ast.LabelStatement) *ast.Label {
 		}
 	}
 
-	c.state.extension.Statements = append(c.state.extension.Statements, newStmt)
 	return &newStmt.Label
 }
 
@@ -427,7 +427,6 @@ func (c *Cogen) getCurLabelStatement(stmt *ast.Label) (*ast.LabelStatement, erro
 }
 
 func (c *Cogen) processIf(stmt *ast.IfStatement) {
-	log.Printf("%s: if start", &c.state.curStatement.Label)
 	variables := getVars(stmt.Cond)
 	if c.isSubsetDelta(variables) {
 		curState := c.saveState()
@@ -451,7 +450,6 @@ func (c *Cogen) processIf(stmt *ast.IfStatement) {
 
 		// Reset to the current block, and add the if statement
 		c.state = curState
-		log.Printf("%s: if addStatement", &c.state.curStatement.Label)
 		c.addStatement(&ast.IfStatement{
 			Token:      stmt.Token,
 			Cond:       stmt.Cond,
@@ -479,7 +477,6 @@ func (c *Cogen) processIf(stmt *ast.IfStatement) {
 		l2 = c.processPoly(l2)
 
 		c.state = curState
-		log.Printf("%s: if addStatement", &c.state.curStatement.Label)
 		c.addStatement(
 			codeAssign(&ast.CallExpression{
 				Token: token.Token{
@@ -552,8 +549,6 @@ func (c *Cogen) isSubsetDelta(vars []*ast.Identifier) bool {
 
 func (c *Cogen) existsDelta(item *ast.Identifier) bool {
 	_, found := c.state.delta[item.Value]
-	// log.Printf("exists delta: %s, item: %s result: %v", c.state.delta, item.Value, found)
-	// log.Println("Current label statement:\n", c.state.curStatement)
 	return found
 }
 

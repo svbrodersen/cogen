@@ -134,7 +134,13 @@ func (p *Program) String() string {
 func (ae *ArbitraryExpression) expressionNode()      {}
 func (ae *ArbitraryExpression) TokenLiteral() string { return ae.Token.Literal }
 func (ae *ArbitraryExpression) String() string {
-	return ae.TokenLiteral() + " " + ae.Value
+	var out bytes.Buffer
+	out.WriteString("(")
+	out.WriteString(ae.TokenLiteral())
+	out.WriteString(" ")
+	out.WriteString(ae.Value)
+	out.WriteString(")")
+	return out.String()
 }
 
 func (cs *Constant) valueNode()           {}
@@ -234,7 +240,9 @@ func (as *AssignmentStatement) TokenLiteral() string {
 func (as *AssignmentStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(as.Left.String())
+	out.WriteString(" ")
 	out.WriteString(as.TokenLiteral())
+	out.WriteString(" ")
 	out.WriteString(as.Right.String())
 	return out.String()
 }
@@ -275,9 +283,8 @@ func (is *IfStatement) TokenLiteral() string {
 func (is *IfStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString(is.TokenLiteral() + " ")
-	out.WriteString("(")
 	out.WriteString(is.Cond.String())
-	out.WriteString(") ")
+	out.WriteString(" ")
 	out.WriteString(is.LabelTrue.String() + " ")
 	out.WriteString(is.LabelFalse.String())
 	return out.String()
