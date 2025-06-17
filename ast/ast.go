@@ -82,11 +82,6 @@ type CallExpression struct {
 	Variables []*Identifier
 }
 
-type ArbitraryExpression struct {
-	Token token.Token // Identifier
-	Value string
-}
-
 type IntegerLiteral struct {
 	Token token.Token
 	Value int64
@@ -131,7 +126,14 @@ func (p *Program) TokenLiteral() string {
 
 func (p *Program) String() string {
 	var out bytes.Buffer
-
+	out.WriteString(p.Name)
+	args := []string{}
+	for _, a := range p.Variables {
+		args = append(args, a.String())
+	}
+	out.WriteString("(")
+	out.WriteString(strings.Join(args, ", "))
+	out.WriteString(");\n")
 	for _, s := range p.Statements {
 		out.WriteString(s.String())
 	}
@@ -149,18 +151,6 @@ func (fc *FunctionCall) String() string {
 	out.WriteString(fc.Function.String())
 	out.WriteString("(")
 	out.WriteString(strings.Join(args, ", "))
-	out.WriteString(")")
-	return out.String()
-}
-
-func (ae *ArbitraryExpression) expressionNode()      {}
-func (ae *ArbitraryExpression) TokenLiteral() string { return ae.Token.Literal }
-func (ae *ArbitraryExpression) String() string {
-	var out bytes.Buffer
-	out.WriteString("(")
-	out.WriteString(ae.TokenLiteral())
-	out.WriteString(" ")
-	out.WriteString(ae.Value)
 	out.WriteString(")")
 	return out.String()
 }

@@ -5,7 +5,6 @@ import (
 	"cogen/lexer"
 	"cogen/token"
 	"fmt"
-	"log"
 	"strconv"
 )
 
@@ -73,7 +72,6 @@ func New(l lexer.Lexer) *Parser {
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 	p.registerPrefix(token.SUB, p.parsePrefixExpression)
-	p.registerPrefix(token.CONS, p.parsePrefixExpression)
 
 	// infix
 	p.registerInfix(token.ADD, p.parseInfixExpression)
@@ -138,7 +136,6 @@ func (p *Parser) peakError(t token.TokenType) {
 }
 
 func (p *Parser) noPrefixParseFnError(t token.TokenType) {
-	log.Println(p.peakToken)
 	msg := fmt.Sprintf("no prefix parse function for %s found", t)
 	p.errors = append(p.errors, msg)
 }
@@ -274,7 +271,7 @@ func (p *Parser) parseStatement() ast.Statement {
 	default:
 		// If next token is assign, then take care of it
 		if p.peakTokenIs(token.ASSIGN) {
-			return p.parseAssginmentStatement()
+			return p.parseAssignmentStatement()
 		}
 		return p.parseExpressionStatement()
 	}
@@ -294,9 +291,7 @@ func (p *Parser) parseLabelStatement() *ast.LabelStatement {
 
 	for !p.peakLabel() && p.curToken.Type != token.EOF {
 		stmt := p.parseStatement()
-		if stmt != nil {
-			labelStmt.Statements = append(labelStmt.Statements, stmt)
-		}
+		labelStmt.Statements = append(labelStmt.Statements, stmt)
 		p.nextToken()
 	}
 	return labelStmt
@@ -355,7 +350,7 @@ func (p *Parser) parseGotoStatement() *ast.GotoStatement {
 	return stmt
 }
 
-func (p *Parser) parseAssginmentStatement() *ast.AssignmentStatement {
+func (p *Parser) parseAssignmentStatement() *ast.AssignmentStatement {
 	val := p.requireIdentifier()
 	stmt := &ast.AssignmentStatement{Left: val}
 	if !p.requirePeak(token.ASSIGN) {

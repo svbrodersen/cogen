@@ -1,0 +1,12 @@
+ack (m, n);
+ack: if m = 0 goto done else next;
+next: if n = 0 goto ack0 else ack1;
+done: return n + 1;
+ack0: n := 1;
+  goto ack2;
+ack1: n := n - 1;
+  n := call ack m n;
+  goto ack2;
+ack2: m := m - 1;
+  n := call ack m n;
+  return n;
