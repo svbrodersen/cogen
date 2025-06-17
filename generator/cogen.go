@@ -66,7 +66,10 @@ func (c *Cogen) saveState() *State {
 }
 
 func (c *Cogen) dynamicVariables() []ast.Expression {
-	vars := make([]ast.Expression, len(c.OriginalProgram.Variables)-len(c.state.extension.Variables))
+	vars := make(
+		[]ast.Expression,
+		len(c.OriginalProgram.Variables)-len(c.state.extension.Variables),
+	)
 	count := 0
 	for _, item := range c.OriginalProgram.Variables {
 		if !c.existsDelta(item) {
@@ -130,7 +133,11 @@ func (c *Cogen) processHeader() {
 		},
 	}
 
-	c.state.extension.Statements = append(c.state.extension.Statements, initLabel, twoLabel)
+	c.state.extension.Statements = append(
+		c.state.extension.Statements,
+		initLabel,
+		twoLabel,
+	)
 }
 
 func (c *Cogen) labelUplift(label string) ast.Expression {
@@ -138,7 +145,10 @@ func (c *Cogen) labelUplift(label string) ast.Expression {
 		Token:    newToken(token.LPAREN, "("),
 		Function: newIdentifier("list"),
 	}
-	arguments := make([]ast.Expression, len(c.state.delta)+1)
+	arguments := make(
+		[]ast.Expression,
+		len(c.state.delta)+1,
+	)
 	arguments[0] = &ast.Constant{
 		Token: newToken(token.CONSTANT, "'"),
 		Value: newIdentifier(label),
@@ -170,7 +180,7 @@ func (c *Cogen) labelUplift(label string) ast.Expression {
 func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 	switch v := exp.(type) {
 	case *ast.CallExpression:
-		log.Fatal("exprtup: how is this call expression?")
+		log.Fatal("exprup: how is this call expression?")
 	case *ast.Identifier:
 		if c.existsDelta(v) {
 			return &ast.FunctionCall{
@@ -428,7 +438,10 @@ func (c *Cogen) processRegularAssginment(stmt *ast.AssignmentStatement) {
 	}
 }
 
-func (c *Cogen) processCallAssginment(stmt *ast.AssignmentStatement, callExp *ast.CallExpression) {
+func (c *Cogen) processCallAssginment(
+	stmt *ast.AssignmentStatement,
+	callExp *ast.CallExpression,
+) {
 	// live exp
 	if c.isSubsetDelta(callExp.Variables) {
 		leftCpy := *stmt.Left
@@ -459,9 +472,8 @@ func (c *Cogen) processCallAssginment(stmt *ast.AssignmentStatement, callExp *as
 		l1 := c.newLabel(1, callExp.Label.Value)
 		c.addStatement(
 			codeAssign(&ast.CallExpression{
-				Token: newToken(token.CALL, "call"),
-				Label: l1.Label,
-
+				Token:     newToken(token.CALL, "call"),
+				Label:     l1.Label,
 				Variables: []*ast.Identifier{},
 			}))
 		code := newIdentifier("code")
@@ -722,7 +734,10 @@ func underlineAssign(x *ast.Identifier, exp ast.Expression) ast.Expression {
 	return newFunction(newIdentifier("list"), arguments)
 }
 
-func underlineIf(e ast.Expression, l1 ast.Expression, l2 ast.Expression) ast.Expression {
+func underlineIf(e ast.Expression,
+	l1 ast.Expression,
+	l2 ast.Expression,
+) ast.Expression {
 	arguments := []ast.Expression{
 		newConstant(newIdentifier("if")),
 		e,

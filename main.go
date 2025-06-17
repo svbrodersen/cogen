@@ -32,7 +32,7 @@ func main() {
 	delta := []int{}
 	if argc != 2 {
 		i := 2
-		delta := make([]int, argc-2)
+		delta = make([]int, argc-2)
 		for i < argc {
 			val, err := strconv.ParseInt(os.Args[i], 10, 64)
 			if err != nil {
