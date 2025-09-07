@@ -135,7 +135,7 @@ if (s = '()) 4-end-c-s 4-isab-c-s;`,
 			l := lexer.New(tt.prog)
 			p := parser.New(l)
 			c := generator.New(p)
-			got := c.Gen([]int{0})
+			got, _ := c.Gen([]int{0})
 			log.Printf("Program:\n%s", c.OriginalProgram)
 			log.Printf("Cogen:\n%s", got)
 			if strings.EqualFold(got.String(), tt.want) {

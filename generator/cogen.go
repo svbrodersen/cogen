@@ -31,8 +31,14 @@ func New(p *parser.Parser) *Cogen {
 	}
 }
 
-func (c *Cogen) Gen(delta []int) *ast.Program {
+func (c *Cogen) Gen(delta []int) (*ast.Program, error) {
+	// Parse program and check for errors
 	c.OriginalProgram = c.parser.ParseProgram()
+
+	if len(c.parser.Errors()) != 0 {
+		return nil, errors.New(c.parser.GetErrorMessage())
+	}
+
 	// Note the first var as static
 	c.state = &State{}
 	c.state.delta = make(map[string]*ast.Identifier, len(delta))
@@ -52,7 +58,7 @@ func (c *Cogen) Gen(delta []int) *ast.Program {
 	// Start the process on the first statement
 	c.processPoly(c.OriginalProgram.Statements[0])
 
-	return c.state.extension
+	return c.state.extension, nil
 }
 
 func (c *Cogen) saveState() *State {

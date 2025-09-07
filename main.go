@@ -47,6 +47,10 @@ func main() {
 	l := lexer.New(prog)
 	p := parser.New(l)
 	c := generator.New(p)
-	got := c.Gen(delta)
-	fmt.Println(got)
+	got, err := c.Gen(delta)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+	} else {
+		fmt.Println(got)
+	}
 }

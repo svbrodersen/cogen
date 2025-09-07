@@ -145,22 +145,19 @@ func expandTabs(line string, tabWidth int) (string, []int) {
 func (p *Parser) GetErrorMessage() string {
 	lines := strings.Split(p.l.GetInput(), "\n")
 	msg := ""
-	for _, err := range p.errors {
-		line := lines[err.Token.Line]
+	err := p.errors[0]
+	line := lines[err.Token.Line-1]
 
-		// Print offending line with ~ underline
-		expanded, indexToCol := expandTabs(line, 2)
-		startCol := indexToCol[err.Token.Column]
-		endCol := startCol + len(err.Token.Literal)
-		underline := strings.Repeat(" ", startCol) + strings.Repeat("~", endCol-startCol)
-		msg += expanded + "\n"
-		msg += underline + "\n"
+	// Print offending line with ~ underline
+	endCol := err.Token.Column + len(err.Token.Literal)
+	underline := strings.Repeat(" ", err.Token.Column) + strings.Repeat("~", endCol-err.Token.Column)
+	msg += line + "\n"
+	msg += underline + "\n"
 
-		// Print error
-		msg += fmt.Sprintf("Error at %d:%d: %s\n\n", err.Token.Line, err.Token.Column, msg)
-	}
+	// Print error
+	msg += fmt.Sprintf("Error at line %d:%d: %s\n\n", err.Token.Line, err.Token.Column, err.Msg)
 
-	msg += fmt.Sprintf("Found %d errors", len(p.errors))
+	msg += fmt.Sprintf("Found %d errors, provided only the first.", len(p.errors))
 	return msg
 }
 

@@ -24,7 +24,7 @@ func (l *DefaultLexer) GetInput() string {
 }
 
 func New(input string) *DefaultLexer {
-	l := &DefaultLexer{input: input, line: 1, column: 0}
+	l := &DefaultLexer{input: input, line: 1, column: -1}
 	l.position = -1
 	l.readChar()
 	return l
@@ -35,7 +35,7 @@ func (l *DefaultLexer) GetLine() int {
 }
 
 func (l *DefaultLexer) GetColumn() int {
-	return l.line
+	return l.column
 }
 
 func (l *DefaultLexer) readChar() {
@@ -49,7 +49,7 @@ func (l *DefaultLexer) readChar() {
 
 	if l.ch == '\n' {
 		l.line++
-		l.column = 0
+		l.column = -1
 	} else {
 		l.column++
 	}
