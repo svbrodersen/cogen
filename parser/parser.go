@@ -6,6 +6,7 @@ import (
 	"cogen/token"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -32,7 +33,6 @@ var precedence = map[token.TokenType]int{
 }
 
 type (
-	valueParseFn  func() ast.Value
 	prefixParseFn func() ast.Expression
 	infixParseFn  func(ast.Expression) ast.Expression
 )
@@ -40,35 +40,32 @@ type (
 type Parser struct {
 	l lexer.Lexer
 
-	errors []string
+	errors []ParserError
 
 	curToken  token.Token
 	peakToken token.Token
 
-	valueParseFns  map[token.TokenType]valueParseFn
 	prefixParseFns map[token.TokenType]prefixParseFn
 	infixParseFns  map[token.TokenType]infixParseFn
+}
+
+type ParserError struct {
+	Msg   string
+	Token token.Token
 }
 
 func New(l lexer.Lexer) *Parser {
 	p := &Parser{
 		l:      l,
-		errors: []string{},
+		errors: []ParserError{},
 	}
 
-	p.valueParseFns = make(map[token.TokenType]valueParseFn)
 	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
-	// value
-	p.registerValue(token.IDENT, p.parseIdentifier)
-	p.registerValue(token.NUMBER, p.parseIntegerLiteral)
-	p.registerValue(token.LPAREN, p.parseList)
-	p.registerValue(token.QUOTE, p.parseConstant)
-
 	// prefix
-	p.registerPrefix(token.IDENT, p.parseValueExpression)
-	p.registerPrefix(token.NUMBER, p.parseValueExpression)
-	p.registerPrefix(token.QUOTE, p.parseValueExpression)
+	p.registerPrefix(token.QUOTE, p.parseConstant)
+	p.registerPrefix(token.IDENT, p.parseIdentifier)
+	p.registerPrefix(token.NUMBER, p.parseIntegerLiteral)
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 	p.registerPrefix(token.SUB, p.parsePrefixExpression)
@@ -88,10 +85,6 @@ func New(l lexer.Lexer) *Parser {
 	p.nextToken()
 
 	return p
-}
-
-func (p *Parser) registerValue(tokenType token.TokenType, fn valueParseFn) {
-	p.valueParseFns[tokenType] = fn
 }
 
 func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParseFn) {
@@ -126,18 +119,63 @@ func (p *Parser) requirePeak(t token.TokenType) bool {
 	}
 }
 
-func (p *Parser) Errors() []string {
+func (p *Parser) Errors() []ParserError {
 	return p.errors
+}
+
+func expandTabs(line string, tabWidth int) (string, []int) {
+	var out strings.Builder
+	indexToCol := make([]int, 0, len(line)+1)
+	col := 0
+	for _, r := range line {
+		indexToCol = append(indexToCol, col)
+		if r == '\t' {
+			spaces := tabWidth - (col % tabWidth)
+			out.WriteString(strings.Repeat(" ", spaces))
+			col += spaces
+		} else {
+			out.WriteRune(r)
+			col++
+		}
+	}
+	indexToCol = append(indexToCol, col) // one past last character
+	return out.String(), indexToCol
+}
+
+func (p *Parser) GetErrorMessage() string {
+	lines := strings.Split(p.l.GetInput(), "\n")
+	msg := ""
+	for _, err := range p.errors {
+		line := lines[err.Token.Line]
+
+		// Print offending line with ~ underline
+		expanded, indexToCol := expandTabs(line, 2)
+		startCol := indexToCol[err.Token.Column]
+		endCol := startCol + len(err.Token.Literal)
+		underline := strings.Repeat(" ", startCol) + strings.Repeat("~", endCol-startCol)
+		msg += expanded + "\n"
+		msg += underline + "\n"
+
+		// Print error
+		msg += fmt.Sprintf("Error at %d:%d: %s\n\n", err.Token.Line, err.Token.Column, msg)
+	}
+
+	msg += fmt.Sprintf("Found %d errors", len(p.errors))
+	return msg
+}
+
+func (p *Parser) newError(msg string) {
+	p.errors = append(p.errors, ParserError{Msg: msg, Token: p.curToken})
 }
 
 func (p *Parser) peakError(t token.TokenType) {
 	msg := fmt.Sprintf("expected next token to be %s, got %s", t, p.peakToken.Type)
-	p.errors = append(p.errors, msg)
+	p.newError(msg)
 }
 
 func (p *Parser) noPrefixParseFnError(t token.TokenType) {
 	msg := fmt.Sprintf("no prefix parse function for %s found", t)
-	p.errors = append(p.errors, msg)
+	p.newError(msg)
 }
 
 func (p *Parser) peakPrecedence() int {
@@ -187,29 +225,6 @@ func (p *Parser) parseLabel() ast.Label {
 	}
 }
 
-func (p *Parser) parseList() ast.Value {
-	stmt := &ast.List{Token: p.curToken}
-	p.nextToken()
-	var values []ast.Value
-	// loop as long as we don't have the closing of the list
-	for !p.curTokenIs(token.RPAREN) {
-		value := p.parseValueExpression()
-		if value == nil {
-			msg := fmt.Sprintf("list: could not parse %q as integer", p.curToken.Literal)
-			p.errors = append(p.errors, msg)
-		}
-		values = append(values, p.parseValueExpression().(ast.Value))
-		p.nextToken()
-
-		// If we are in the middle of the list, then we remove the comma
-		if p.curTokenIs(token.COMMA) {
-			p.nextToken()
-		}
-	}
-	stmt.Value = values
-	return stmt
-}
-
 func (p *Parser) parseFunction() (string, []*ast.Identifier) {
 	name := ""
 	variables := []*ast.Identifier{}
@@ -232,11 +247,39 @@ func (p *Parser) parseFunction() (string, []*ast.Identifier) {
 	return name, variables
 }
 
-func (p *Parser) parseConstant() ast.Value {
+func (p *Parser) parseConstant() ast.Expression {
 	stmt := &ast.Constant{Token: p.curToken}
 	p.nextToken()
 
-	stmt.Value = p.parseValueExpression().(ast.Value)
+	// we only have a list, if it is proceeded with a constant.
+	if p.curToken.Type == token.LPAREN {
+		stmt.Value = p.parseList()
+	} else {
+		stmt.Value = p.parseExpression(PREFIX)
+	}
+	return stmt
+}
+
+func (p *Parser) parseList() ast.Expression {
+	stmt := &ast.List{Token: p.curToken}
+	p.nextToken()
+	var values []ast.Expression
+	// loop as long as we don't have the closing of the list
+	for !p.curTokenIs(token.RPAREN) {
+		value := p.parseExpression(LOWEST)
+		if value == nil {
+			msg := fmt.Sprintf("list: could not parse %q as integer", p.curToken.Literal)
+			p.newError(msg)
+		}
+		values = append(values, p.parseExpression(LOWEST))
+		p.nextToken()
+
+		// If we are in the middle of the list, then we remove the comma
+		if p.curTokenIs(token.COMMA) {
+			p.nextToken()
+		}
+	}
+	stmt.Value = values
 	return stmt
 }
 
@@ -244,17 +287,17 @@ func (p *Parser) requireIdentifier() *ast.Identifier {
 	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 }
 
-func (p *Parser) parseIdentifier() ast.Value {
+func (p *Parser) parseIdentifier() ast.Expression {
 	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 }
 
-func (p *Parser) parseIntegerLiteral() ast.Value {
+func (p *Parser) parseIntegerLiteral() ast.Expression {
 	lit := &ast.IntegerLiteral{Token: p.curToken}
 
 	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
 	if err != nil {
 		msg := fmt.Sprintf("could not parse %q as integer", p.curToken.Literal)
-		p.errors = append(p.errors, msg)
+		p.newError(msg)
 	}
 	lit.Value = value
 	return lit
@@ -314,8 +357,8 @@ func (p *Parser) parseIfStatement() *ast.IfStatement {
 	p.nextToken()
 	// skip over else
 	if !p.curTokenIs(token.ELSE) {
-		msg := fmt.Sprintf("expected else, got %s", p.curToken)
-		p.errors = append(p.errors, msg)
+		msg := fmt.Sprintf("expected else, got %s", p.curToken.Type)
+		p.newError(msg)
 		return nil
 	}
 	p.nextToken()
@@ -343,7 +386,6 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 
 func (p *Parser) parseGotoStatement() *ast.GotoStatement {
 	stmt := &ast.GotoStatement{Token: p.curToken}
-
 	p.nextToken()
 	stmt.Label = p.parseLabel()
 	p.nextToken()
@@ -396,14 +438,6 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 		leftExp = infix(leftExp)
 	}
 	return leftExp
-}
-
-func (p *Parser) parseValueExpression() ast.Expression {
-	value := p.valueParseFns[p.curToken.Type]
-	if value == nil {
-		return nil
-	}
-	return value()
 }
 
 func (p *Parser) parsePrefixExpression() ast.Expression {

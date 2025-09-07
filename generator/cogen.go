@@ -200,11 +200,6 @@ func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 				Value: v,
 			}
 		}
-	case ast.Value:
-		return &ast.Constant{
-			Token: newToken(token.CONSTANT, "'"),
-			Value: v,
-		}
 	case *ast.InfixExpression:
 		arguments := make([]ast.Expression, 3)
 		arguments[1] = &ast.Constant{
@@ -683,7 +678,7 @@ func newFunction(function ast.Expression, arguments []ast.Expression) ast.Expres
 	}
 }
 
-func newConstant(value ast.Value) ast.Expression {
+func newConstant(value ast.Expression) ast.Expression {
 	return &ast.Constant{
 		Token: newToken(token.CONSTANT, "'"),
 		Value: value,

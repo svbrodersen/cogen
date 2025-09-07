@@ -21,11 +21,6 @@ type Expression interface {
 	expressionNode()
 }
 
-type Value interface {
-	Expression
-	valueNode()
-}
-
 type Program struct {
 	Name       string
 	Variables  []*Identifier
@@ -108,12 +103,12 @@ type InfixExpression struct {
 
 type List struct {
 	Token token.Token // (
-	Value []Value
+	Value []Expression
 }
 
 type Constant struct {
 	Token token.Token // '
-	Value Value
+	Value Expression
 }
 
 func (p *Program) TokenLiteral() string {
@@ -126,14 +121,16 @@ func (p *Program) TokenLiteral() string {
 
 func (p *Program) String() string {
 	var out bytes.Buffer
-	out.WriteString(p.Name)
-	args := []string{}
-	for _, a := range p.Variables {
-		args = append(args, a.String())
+	if p.Name != "" {
+		out.WriteString(p.Name)
+		args := []string{}
+		for _, a := range p.Variables {
+			args = append(args, a.String())
+		}
+		out.WriteString("(")
+		out.WriteString(strings.Join(args, ", "))
+		out.WriteString(");\n")
 	}
-	out.WriteString("(")
-	out.WriteString(strings.Join(args, ", "))
-	out.WriteString(");\n")
 	for _, s := range p.Statements {
 		out.WriteString(s.String())
 	}

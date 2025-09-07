@@ -351,8 +351,8 @@ func TestAckermannFunc(t *testing.T) {
 					n := call ack m n;
 					goto ack2;
 		ack2: m := m - 1;
-					n := call ack m n;
-					return n;
+			n := call ack m n;
+			return n;
 	`
 	l := lexer.New(input)
 	p := New(l)
@@ -395,18 +395,11 @@ func TestAckermannFunc(t *testing.T) {
 }
 
 func checkParserErrors(p *Parser) error {
-	errs := p.Errors()
-
-	if len(errs) == 0 {
+	if len(p.Errors()) == 0 {
 		return nil
 	}
-
-	msg := fmt.Sprintf("parser has %d errors", len(errs))
-	err := errors.New(msg)
-	for _, msg := range errs {
-		err = fmt.Errorf("parser error: %s", msg)
-	}
-	return err
+	msg := p.GetErrorMessage()
+	return errors.New(msg)
 }
 
 func testLabelStatement(t *testing.T, st ast.Statement, value string, length int) []ast.Statement {
@@ -490,7 +483,7 @@ func testConstant(t *testing.T, exp ast.Expression, value string) {
 	}
 }
 
-func testList(t *testing.T, exp ast.Expression, value []ast.Value) {
+func testList(t *testing.T, exp ast.Expression, value []ast.Expression) {
 	l, ok := exp.(*ast.List)
 	if !ok {
 		t.Fatalf("exp not ast.List, got %T", exp)
