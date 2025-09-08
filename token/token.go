@@ -64,10 +64,11 @@ const (
 	RPAREN = ")"
 
 	// Delimeters
-	SEMICOLON = ";"
-	COLON     = ":"
-	COMMA     = ","
-	QUOTE     = "'"
+	SEMICOLON   = ";"
+	COLON       = ":"
+	COMMA       = ","
+	QUOTE       = "'"
+	DOUBLEQUOTE = "\""
 )
 
 func LookupIdent(ident string) TokenType {

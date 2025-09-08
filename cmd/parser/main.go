@@ -1,13 +1,11 @@
 package main
 
 import (
-	"cogen/generator"
 	"cogen/lexer"
 	"cogen/parser"
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
 )
 
 func fail(err error) {
@@ -29,28 +27,16 @@ func main() {
 		fail(err)
 	}
 
-	delta := []int{}
-	if argc != 2 {
-		i := 2
-		delta = make([]int, argc-2)
-		for i < argc {
-			val, err := strconv.ParseInt(os.Args[i], 10, 64)
-			if err != nil {
-				fail(err)
-			}
-			delta[i-2] = int(val)
-			i += 1
-		}
-	}
-
 	prog := string(data)
 	l := lexer.New(prog)
 	p := parser.New(l)
-	c := generator.New(p)
-	got, err := c.Gen(delta)
-	if err != nil {
-		fmt.Printf("%v\n", err)
+
+	// Parse program and check for errors
+	parsed_program := p.ParseProgram()
+
+	if len(p.Errors()) != 0 {
+		fmt.Println(p.GetErrorMessage())
 	} else {
-		fmt.Println(got)
+		fmt.Println(parsed_program.String())
 	}
 }

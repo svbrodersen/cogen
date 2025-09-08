@@ -106,6 +106,11 @@ type List struct {
 	Value []Expression
 }
 
+type StringExpression struct {
+	Token token.Token // "
+	Value string
+}
+
 type Constant struct {
 	Token token.Token // '
 	Value Expression
@@ -152,7 +157,6 @@ func (fc *FunctionCall) String() string {
 	return out.String()
 }
 
-func (cs *Constant) valueNode()           {}
 func (cs *Constant) expressionNode()      {}
 func (cs *Constant) TokenLiteral() string { return cs.Token.Literal }
 func (cs *Constant) String() string {
@@ -160,6 +164,16 @@ func (cs *Constant) String() string {
 
 	out.WriteString(cs.Token.Literal)
 	out.WriteString(cs.Value.String())
+	return out.String()
+}
+
+func (se *StringExpression) expressionNode()      {}
+func (se *StringExpression) TokenLiteral() string { return se.Token.Literal }
+func (se *StringExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString(se.Token.Literal)
+	out.WriteString(se.Value)
+	out.WriteString(se.Token.Literal)
 	return out.String()
 }
 
@@ -295,11 +309,11 @@ func (is *IfStatement) String() string {
 	out.WriteString(is.Cond.String())
 	out.WriteString(" ")
 	out.WriteString(is.LabelTrue.String() + " ")
+	out.WriteString("else ")
 	out.WriteString(is.LabelFalse.String())
 	return out.String()
 }
 
-func (i *Identifier) valueNode()      {}
 func (i *Identifier) expressionNode() {}
 func (i *Identifier) TokenLiteral() string {
 	return i.Token.Literal
@@ -317,7 +331,6 @@ func (ll *Label) expressionNode()      {}
 func (ll *Label) TokenLiteral() string { return ll.Token.Literal }
 func (ll *Label) String() string       { return ll.Value }
 
-func (i *List) valueNode()            {}
 func (ll *List) expressionNode()      {}
 func (ll *List) TokenLiteral() string { return ll.Token.Literal }
 func (ll *List) String() string {

@@ -69,6 +69,7 @@ func New(l lexer.Lexer) *Parser {
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 	p.registerPrefix(token.SUB, p.parsePrefixExpression)
+	p.registerPrefix(token.DOUBLEQUOTE, p.parseString)
 
 	// infix
 	p.registerInfix(token.ADD, p.parseInfixExpression)
@@ -121,25 +122,6 @@ func (p *Parser) requirePeak(t token.TokenType) bool {
 
 func (p *Parser) Errors() []ParserError {
 	return p.errors
-}
-
-func expandTabs(line string, tabWidth int) (string, []int) {
-	var out strings.Builder
-	indexToCol := make([]int, 0, len(line)+1)
-	col := 0
-	for _, r := range line {
-		indexToCol = append(indexToCol, col)
-		if r == '\t' {
-			spaces := tabWidth - (col % tabWidth)
-			out.WriteString(strings.Repeat(" ", spaces))
-			col += spaces
-		} else {
-			out.WriteRune(r)
-			col++
-		}
-	}
-	indexToCol = append(indexToCol, col) // one past last character
-	return out.String(), indexToCol
 }
 
 func (p *Parser) GetErrorMessage() string {
@@ -249,11 +231,31 @@ func (p *Parser) parseConstant() ast.Expression {
 	p.nextToken()
 
 	// we only have a list, if it is proceeded with a constant.
-	if p.curToken.Type == token.LPAREN {
+	switch p.curToken.Type {
+	case token.LPAREN:
 		stmt.Value = p.parseList()
-	} else {
+	default:
 		stmt.Value = p.parseExpression(PREFIX)
 	}
+	return stmt
+}
+
+func (p *Parser) parseString() ast.Expression {
+	stmt := &ast.StringExpression{Token: p.curToken}
+	p.nextToken()
+	// A string is just a lot of identifiers with space in between.
+	// The end is simply, when we have no more identifiers.
+	value := ""
+	for !p.curTokenIs(token.DOUBLEQUOTE) {
+		// Add space if next token is identifier
+		if p.peakTokenIs(token.DOUBLEQUOTE) {
+			value = value + p.curToken.Literal
+		} else {
+			value = value + p.curToken.Literal + " "
+		}
+		p.nextToken()
+	}
+	stmt.Value = value
 	return stmt
 }
 
@@ -426,7 +428,7 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 		return nil
 	}
 	leftExp = prefix()
-	for !p.peakTokenIs(token.SEMICOLON) && precedence < p.peakPrecedence() {
+	for !p.peakTokenIs(token.SEMICOLON) && !p.peakTokenIs(token.COMMA) && precedence < p.peakPrecedence() {
 		infix := p.infixParseFns[p.peakToken.Type]
 		if infix == nil {
 			return leftExp

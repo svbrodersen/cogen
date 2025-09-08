@@ -89,6 +89,8 @@ func (l *DefaultLexer) NextToken() token.Token {
 		tok = newToken(l, token.ADD, '+')
 	case '*':
 		tok = newToken(l, token.ASTERISK, '*')
+	case '"':
+		tok = newToken(l, token.DOUBLEQUOTE, '"')
 	case '/':
 		tok = newToken(l, token.SLASH, '/')
 	case ':':
