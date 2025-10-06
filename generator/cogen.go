@@ -157,7 +157,7 @@ func (c *Cogen) labelUplift(label string) ast.Expression {
 	)
 	arguments[0] = &ast.Constant{
 		Token: newToken(token.CONSTANT, "'"),
-		Value: newIdentifier(label),
+		Value: newSymbol(label),
 	}
 
 	items := make([]*ast.Identifier, len(c.state.delta))
@@ -195,7 +195,7 @@ func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 				Arguments: []ast.Expression{
 					&ast.Constant{
 						Token: newToken(token.CONSTANT, "'"),
-						Value: newIdentifier("quote"),
+						Value: newSymbol("quote"),
 					},
 					v,
 				},
@@ -203,14 +203,14 @@ func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 		} else {
 			return &ast.Constant{
 				Token: newToken(token.CONSTANT, "'"),
-				Value: v,
+				Value: newSymbol(v.String()),
 			}
 		}
 	case *ast.InfixExpression:
 		arguments := make([]ast.Expression, 3)
 		arguments[1] = &ast.Constant{
 			Token: newToken(token.CONSTANT, "'"),
-			Value: newIdentifier(v.Operator),
+			Value: newSymbol(v.Operator),
 		}
 		arguments[0] = c.exprUplift(v.Left)
 		arguments[2] = c.exprUplift(v.Right)
@@ -224,7 +224,7 @@ func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 		arguments := make([]ast.Expression, 2)
 		arguments[0] = &ast.Constant{
 			Token: newToken(token.CONSTANT, "'"),
-			Value: newIdentifier(v.Operator),
+			Value: newSymbol(v.Operator),
 		}
 		arguments[1] = c.exprUplift(v.Right)
 
@@ -406,10 +406,12 @@ func (c *Cogen) addStatement(stmt ast.Statement) {
 }
 
 func (c *Cogen) processAssginment(stmt *ast.AssignmentStatement) {
-	callExp, ok := stmt.Right.(*ast.CallExpression)
-	if ok {
-		c.processCallAssginment(stmt, callExp)
-	} else {
+	switch expr := stmt.Right.(type) {
+	case *ast.CallExpression:
+		c.processCallAssginment(stmt, expr)
+	case *ast.FunctionCall:
+		c.processFunctionCall(stmt, expr)
+	default:
 		c.processRegularAssginment(stmt)
 	}
 }
@@ -490,6 +492,24 @@ func (c *Cogen) processCallAssginment(
 		// and update delta
 		c.removeDelta(stmt.Left)
 	}
+}
+
+func (c *Cogen) processFunctionCall(
+	stmt *ast.AssignmentStatement,
+	call *ast.FunctionCall,
+) {
+	callCpy := *call
+	code := newIdentifier("code")
+	o := newIdentifier("o")
+	leftCpy := *stmt.Left
+	c.addStatement(codeAssign(
+		&ast.FunctionCall{
+			Token:     o.Token,
+			Function:  o,
+			Arguments: []ast.Expression{code, underlineCall(&leftCpy, &callCpy)},
+		}))
+	// and update delta
+	c.removeDelta(stmt.Left)
 }
 
 func (c *Cogen) getOrigLabelStatement(stmt *ast.Label) (*ast.LabelStatement, error) {
@@ -705,6 +725,16 @@ func newIdentifier(name string) *ast.Identifier {
 	}
 }
 
+func newSymbol(name string) ast.Expression {
+	return &ast.SymbolExpression{
+		Token: token.Token{
+			Type:    token.IDENT,
+			Literal: name,
+		},
+		Value: name,
+	}
+}
+
 func codeAssign(right ast.Expression) *ast.AssignmentStatement {
 	return &ast.AssignmentStatement{
 		Left:  newIdentifier("code"),
@@ -715,24 +745,24 @@ func codeAssign(right ast.Expression) *ast.AssignmentStatement {
 
 func underlineCall(x *ast.Identifier, l ast.Expression) ast.Expression {
 	arg1 := []ast.Expression{
-		newConstant(newIdentifier("call")),
+		newConstant(newSymbol("call")),
 		l,
 	}
 	arguments := []ast.Expression{
-		newConstant(x),
-		newConstant(newIdentifier(":=")),
-		newFunction(newIdentifier("list"), arg1),
+		newConstant(newSymbol(x.String())),
+		newConstant(newSymbol(":=")),
+		newFunction(newSymbol("list"), arg1),
 	}
-	return newFunction(newIdentifier("list"), arguments)
+	return newFunction(newSymbol("list"), arguments)
 }
 
 func underlineAssign(x *ast.Identifier, exp ast.Expression) ast.Expression {
 	arguments := []ast.Expression{
-		newConstant(x),
-		newConstant(newIdentifier(":=")),
+		newConstant(newSymbol(x.String())),
+		newConstant(newSymbol(":=")),
 		exp,
 	}
-	return newFunction(newIdentifier("list"), arguments)
+	return newFunction(newSymbol("list"), arguments)
 }
 
 func underlineIf(e ast.Expression,
@@ -740,7 +770,7 @@ func underlineIf(e ast.Expression,
 	l2 ast.Expression,
 ) ast.Expression {
 	arguments := []ast.Expression{
-		newConstant(newIdentifier("if")),
+		newConstant(newSymbol("if")),
 		e,
 		l1,
 		l2,
@@ -750,7 +780,7 @@ func underlineIf(e ast.Expression,
 
 func underlineReturn(e ast.Expression) ast.Expression {
 	arguments := []ast.Expression{
-		newConstant(newIdentifier("return")),
+		newConstant(newSymbol("return")),
 		e,
 	}
 	return newFunction(newIdentifier("list"), arguments)
