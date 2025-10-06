@@ -313,7 +313,8 @@ func TestConstantHard(t *testing.T) {
 	input := `
 		1: x := '1;
 			 goto 2;
-		2: y := '(1, 2, 3);
+		2: y := '(1 + 3 := 3);
+		3: y := (3 + 1);
 	`
 	l := lexer.New(input)
 	p := New(l)
@@ -327,8 +328,8 @@ func TestConstantHard(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(program.Statements) != 2 {
-		t.Fatalf("program.Statements does not contain 1 statements, got %d", len(program.Statements))
+	if len(program.Statements) != 3 {
+		t.Fatalf("program.Statements does not contain 3 statements, got %d", len(program.Statements))
 	}
 
 	stmts := testLabelStatement(t, program.Statements[0], "1", 2)
@@ -336,7 +337,10 @@ func TestConstantHard(t *testing.T) {
 	testGotoStatement(t, stmts[1], "2")
 
 	stmt := testLabelStatement(t, program.Statements[1], "2", 1)[0]
-	testAssignmentStatement(t, "y", stmt, "'(1, 2, 3)")
+	testAssignmentStatement(t, "y", stmt, "'(1 + 3 := 3)")
+
+	stmt = testLabelStatement(t, program.Statements[2], "3", 1)[0]
+	testAssignmentStatement(t, "y", stmt, "(3 + 1)")
 }
 
 func TestAckermannFunc(t *testing.T) {

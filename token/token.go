@@ -48,6 +48,9 @@ const (
 	CONSTANT = "CONSTANT"
 	LABEL    = "LABEL"
 
+	// SPECIAL FOR SYMBOL EXPRESSION
+	SYMBOL = "SYMBOL"
+
 	// Operators
 	EQUAL       = "="
 	NOT_EQUAL   = "!="

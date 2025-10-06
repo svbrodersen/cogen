@@ -9,23 +9,30 @@ type Lexer interface {
 	GetLine() int
 	GetColumn() int
 	GetInput() string
+	SetQuotedContext(bool)
 }
 
 type DefaultLexer struct {
-	input    string
-	position int
-	ch       byte
-	line     int
-	column   int
+	input         string
+	quotedContext bool
+	position      int
+	ch            byte
+	line          int
+	column        int
 }
 
 func (l *DefaultLexer) GetInput() string {
 	return l.input
 }
 
+func (l *DefaultLexer) SetQuotedContext(val bool) {
+	l.quotedContext = val
+}
+
 func New(input string) *DefaultLexer {
 	l := &DefaultLexer{input: input, line: 1, column: -1}
 	l.position = -1
+	l.quotedContext = false
 	l.readChar()
 	return l
 }
@@ -66,6 +73,20 @@ func (l *DefaultLexer) peakChar() byte {
 func (l *DefaultLexer) NextToken() token.Token {
 	var tok token.Token
 	l.skipWhitespace()
+
+	if l.quotedContext {
+		if isDigit(l.ch) {
+			num := l.readNumber()
+			tok = newToken(l, token.NUMBER, num)
+			return tok
+		} else if isQuotedChar(l.ch) {
+			// read until whitespace or endline as symbol
+			literal := l.readQuoted()
+			tok = newToken(l, token.SYMBOL, literal)
+			return tok
+		}
+	}
+
 	switch l.ch {
 	case ';':
 		tok = newToken(l, token.SEMICOLON, ';')
@@ -130,6 +151,14 @@ func (l *DefaultLexer) NextToken() token.Token {
 	return tok
 }
 
+func (l *DefaultLexer) readQuoted() string {
+	position := l.position
+	for isQuotedChar(l.ch) {
+		l.readChar()
+	}
+	return l.input[position:l.position]
+}
+
 func (l *DefaultLexer) readIdentifier() string {
 	position := l.position
 	for isLetter(l.ch) || isDigit(l.ch) {
@@ -152,9 +181,30 @@ func (l *DefaultLexer) skipWhitespace() {
 	}
 }
 
+func isQuotedChar(ch byte) bool {
+	return !(isEndLine(ch) || isWhitespace(ch) || (ch == '\'') || (ch == '(') || (ch == ')') || (ch == ','))
+}
+
+func isEndLine(ch byte) bool {
+	if ch == ';' {
+		return true
+	} else {
+		return false
+	}
+}
+
+func isWhitespace(ch byte) bool {
+	if ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' {
+		return true
+	} else {
+		return false
+	}
+}
+
 func newToken[T rune | string | byte](l Lexer, tokenType token.TokenType, ch T) token.Token {
-	return token.Token{Type: tokenType, Literal: string(ch), Line: l.GetLine(),
-		Column: l.GetColumn()}
+	lit := string(ch)
+	return token.Token{Type: tokenType, Literal: lit, Line: l.GetLine(),
+		Column: l.GetColumn() - len(lit)}
 }
 
 func isLetter(ch byte) bool {

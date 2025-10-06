@@ -98,6 +98,9 @@ func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
 
 func (p *Parser) nextToken() {
 	p.curToken = p.peakToken
+	if p.curToken.Type == token.QUOTE {
+		p.l.SetQuotedContext(true)
+	}
 	p.peakToken = p.l.NextToken()
 }
 
@@ -228,20 +231,24 @@ func (p *Parser) parseFunction() (string, []*ast.Identifier) {
 
 func (p *Parser) parseConstant() ast.Expression {
 	stmt := &ast.Constant{Token: p.curToken}
-	p.nextToken()
 
-	// we only have a list, if it is proceeded with a constant.
-	switch p.curToken.Type {
+	switch p.peakToken.Type {
 	case token.LPAREN:
-		stmt.Value = p.parseList()
+		// We wish to parse constantList entirely with QuotedContext true
+		p.nextToken()
+		stmt.Value = p.parseConstantList()
 	default:
-		stmt.Value = p.parseExpression(PREFIX)
+		// We have already parsed the next token correctly, so we set QuotedContext
+		// back to false and process next
+		p.l.SetQuotedContext(false)
+		p.nextToken()
+		stmt.Value = p.parseSymbolExpression()
 	}
 	return stmt
 }
 
 func (p *Parser) parseString() ast.Expression {
-	stmt := &ast.StringExpression{Token: p.curToken}
+	stmt := &ast.SymbolExpression{Token: p.curToken}
 	p.nextToken()
 	// A string is just a lot of identifiers with space in between.
 	// The end is simply, when we have no more identifiers.
@@ -259,24 +266,42 @@ func (p *Parser) parseString() ast.Expression {
 	return stmt
 }
 
-func (p *Parser) parseList() ast.Expression {
+func (p *Parser) parseSymbolExpression() ast.Expression {
+	stmt := &ast.SymbolExpression{Token: p.curToken, Value: p.curToken.Literal}
+	return stmt
+}
+
+// A constant list is the only list type we can define. Otherwise, how do we
+// deferentiate between a list and a grouped expression?
+func (p *Parser) parseConstantList() ast.Expression {
 	stmt := &ast.List{Token: p.curToken}
+	// Move over (
+	// If next token is our end, then we set back quoted context to false
+	if p.peakTokenIs(token.RPAREN) {
+		p.l.SetQuotedContext(false)
+	}
 	p.nextToken()
 	var values []ast.Expression
 	// loop as long as we don't have the closing of the list
+	var value ast.Expression
 	for !p.curTokenIs(token.RPAREN) {
-		value := p.parseExpression(LOWEST)
+		switch p.curToken.Type {
+		case token.QUOTE:
+			value = p.parseConstant()
+		case token.SYMBOL:
+			value = p.parseSymbolExpression()
+		}
 		if value == nil {
-			msg := fmt.Sprintf("list: could not parse %q as integer", p.curToken.Literal)
+			msg := fmt.Sprintf("list: could not parse %q", p.curToken.Literal)
 			p.newError(msg)
 		}
-		values = append(values, p.parseExpression(LOWEST))
-		p.nextToken()
-
-		// If we are in the middle of the list, then we remove the comma
-		if p.curTokenIs(token.COMMA) {
-			p.nextToken()
+		// If next token is our end, then we set back quoted context to false
+		if p.peakTokenIs(token.RPAREN) {
+			p.l.SetQuotedContext(false)
 		}
+		// Move over the parsed token
+		p.nextToken()
+		values = append(values, value)
 	}
 	stmt.Value = values
 	return stmt

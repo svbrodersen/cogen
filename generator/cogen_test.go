@@ -129,13 +129,54 @@ goto 4-dob-c-q-s;
 4-dob-c-q-s: code := o(code, (list 'q ':= ith()));
 if (s = '()) 4-end-c-s 4-isab-c-s;`,
 		},
+		{
+			name: "Turing",
+			prog: `
+read (Q, Right);
+init: Qtail := Q;
+      Left := '();
+loop: if Qtail = '() goto stop else cont;
+cont: Instruction := first_instruction(Qtail);
+      Qtail := rest(Qtail);
+      Operator := hd(tl(Instruction));
+      if Operator = 'right goto do_right else cont1;
+cont1: if Operator = 'left goto do_left else cont2;
+cont2: if Operator = 'write goto do_write else cont3;
+cont3: if Operator = 'goto goto do_goto else cont4;
+cont4: if Operator = 'if goto do_if else error;
+
+do_right: Left := cons(firstsym(Right), Left);
+          Right := tl(Right);
+          goto loop;
+do_left:  Right := cons(firstsym(Left), Right);
+          Left := tl(Left);
+          goto loop;
+do_write: Symbol := hd(tl(tl(Instruction)));
+          Right := cons(Symbol,tl(Right));
+          goto loop;
+do_goto:  Nextlabel := hd(tl(tl(Instruction)));
+          Qtail := new_tail(Nextlabel, Q);
+          goto loop;
+do_if:    Symbol := hd(tl(tl(Instruction)));
+          Nextlabel := hd(tl(tl(tl(tl(Instruction)))));
+          if Symbol = firstsym(Right) goto jump else loop;
+jump: Qtail := new_tail(Nextlabel, Q); 
+      goto loop;
+error: return o('syntax-error:, Instruction);
+stop: return right;
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			l := lexer.New(tt.prog)
 			p := parser.New(l)
 			c := generator.New(p)
-			got, _ := c.Gen([]int{0})
+			got, err := c.Gen([]int{0})
+			if err != nil {
+				t.Errorf("Errors:\n%s", err)
+				return
+			}
 			log.Printf("Program:\n%s", c.OriginalProgram)
 			log.Printf("Cogen:\n%s", got)
 			if strings.EqualFold(got.String(), tt.want) {

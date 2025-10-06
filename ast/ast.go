@@ -106,8 +106,8 @@ type List struct {
 	Value []Expression
 }
 
-type StringExpression struct {
-	Token token.Token // "
+type SymbolExpression struct {
+	Token token.Token // could be anything
 	Value string
 }
 
@@ -167,13 +167,11 @@ func (cs *Constant) String() string {
 	return out.String()
 }
 
-func (se *StringExpression) expressionNode()      {}
-func (se *StringExpression) TokenLiteral() string { return se.Token.Literal }
-func (se *StringExpression) String() string {
+func (se *SymbolExpression) expressionNode()      {}
+func (se *SymbolExpression) TokenLiteral() string { return se.Token.Literal }
+func (se *SymbolExpression) String() string {
 	var out bytes.Buffer
-	out.WriteString(se.Token.Literal)
 	out.WriteString(se.Value)
-	out.WriteString(se.Token.Literal)
 	return out.String()
 }
 
@@ -341,7 +339,7 @@ func (ll *List) String() string {
 		if i == len(ll.Value)-1 {
 			out.WriteString(elem.String())
 		} else {
-			out.WriteString(elem.String() + ", ")
+			out.WriteString(elem.String() + " ")
 		}
 	}
 	out.WriteString(")")

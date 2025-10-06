@@ -38,7 +38,7 @@ func (c *Cogen) Gen(delta []int) (*ast.Program, error) {
 	if len(c.parser.Errors()) != 0 {
 		return nil, errors.New(c.parser.GetErrorMessage())
 	}
-
+	log.Println(c.OriginalProgram)
 	// Note the first var as static
 	c.state = &State{}
 	c.state.delta = make(map[string]*ast.Identifier, len(delta))
@@ -279,7 +279,7 @@ func (c *Cogen) processPoly(stmt *ast.LabelStatement) *ast.LabelStatement {
 
 	l3 := c.newLabel(3, stmt.Label.Value)
 	l4 := c.newLabel(4, stmt.Label.Value)
-	doneFunc := newIdentifier("done?")
+	doneFunc := newIdentifier("is_done")
 	code := newIdentifier("code")
 	l1.Statements = []ast.Statement{
 		&ast.IfStatement{
