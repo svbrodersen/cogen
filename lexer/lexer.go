@@ -76,13 +76,17 @@ func (l *DefaultLexer) NextToken() token.Token {
 
 	if l.quotedContext {
 		if isDigit(l.ch) {
+			col := l.column
 			num := l.readNumber()
 			tok = newToken(l, token.NUMBER, num)
+			tok.Column = col
 			return tok
 		} else if isQuotedChar(l.ch) {
+			col := l.column
 			// read until whitespace or endline as symbol
 			literal := l.readQuoted()
 			tok = newToken(l, token.SYMBOL, literal)
+			tok.Column = col
 			return tok
 		}
 	}
@@ -117,18 +121,22 @@ func (l *DefaultLexer) NextToken() token.Token {
 	case ':':
 		// We have to first take care of the : := situation
 		if l.peakChar() == '=' {
+			col := l.column
 			ch := l.ch
 			l.readChar()
 			tok = newToken(l, token.ASSIGN, string(ch)+string(l.ch))
+			tok.Column = col
 		} else {
 			tok = newToken(l, token.COLON, ':')
 		}
 	case '!':
 		// We have to first take care of the : := situation
 		if l.peakChar() == '=' {
+			col := l.column
 			ch := l.ch
 			l.readChar()
 			tok = newToken(l, token.NOT_EQUAL, string(ch)+string(l.ch))
+			tok.Column = col
 		} else {
 			tok = newToken(l, token.BANG, '!')
 		}
@@ -136,12 +144,16 @@ func (l *DefaultLexer) NextToken() token.Token {
 		tok = newToken(l, token.EOF, "")
 	default:
 		if isLetter(l.ch) {
+			col := l.column
 			literal := l.readIdentifier()
 			tok = newToken(l, token.LookupIdent(literal), literal)
+			tok.Column = col
 			return tok
 		} else if isDigit(l.ch) {
+			col := l.column
 			num := l.readNumber()
 			tok = newToken(l, token.NUMBER, num)
+			tok.Column = col
 			return tok
 		} else {
 			tok = newToken(l, token.ILLEGAL, l.ch)
@@ -204,7 +216,7 @@ func isWhitespace(ch byte) bool {
 func newToken[T rune | string | byte](l Lexer, tokenType token.TokenType, ch T) token.Token {
 	lit := string(ch)
 	return token.Token{Type: tokenType, Literal: lit, Line: l.GetLine(),
-		Column: l.GetColumn() - len(lit)}
+		Column: l.GetColumn()}
 }
 
 func isLetter(ch byte) bool {
