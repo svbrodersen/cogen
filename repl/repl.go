@@ -2,6 +2,8 @@ package repl
 
 import (
 	"bufio"
+	"bytes"
+	"cogen/ast"
 	"cogen/evaluator"
 	"cogen/lexer"
 	"cogen/object"
@@ -18,10 +20,35 @@ func printParserErrors(out io.Writer, errors []parser.ParserError) {
 		io.WriteString(out, "\t"+err.Msg+"\n")
 	}
 }
+func isDuplicate(a, b *ast.LabelStatement) bool {
+	return a.Label == b.Label
+}
+
+func unionProgram(orig, new *ast.Program) *ast.Program {
+	result := make([]*ast.LabelStatement, len(orig.Statements))
+	copy(result, orig.Statements)
+
+	for _, newItem := range new.Statements {
+		replaced := false
+		for i, origItem := range orig.Statements {
+			if isDuplicate(origItem, newItem) {
+				result[i] = newItem
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			result = append(result, newItem)
+		}
+	}
+	orig.Statements = result
+	return orig
+}
 
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
 	env := object.NewEnvironment()
+	var input_string bytes.Buffer
 	for {
 		fmt.Printf(PROMPT)
 		scanned := scanner.Scan()
@@ -39,8 +66,9 @@ func Start(in io.Reader, out io.Writer) {
 		if !matched {
 			line = "1: " + line
 		}
+		input_string.WriteString(line)
 
-		l := lexer.New(line)
+		l := lexer.New(input_string.String())
 		p := parser.New(l)
 		program := p.ParseProgram()
 		if len(p.Errors()) != 0 {
