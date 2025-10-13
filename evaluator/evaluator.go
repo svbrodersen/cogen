@@ -32,7 +32,7 @@ func (e *Evaluator) Eval(node ast.Node, env *object.Environment) object.Object {
 	case *ast.Program:
 		return e.evalProgram(node, env)
 	case *ast.SymbolExpression:
-		return &object.Symbol{Value: node.Value}
+		return &object.String{Value: node.Value}
 	case *ast.Constant:
 		return e.Eval(node.Value, env)
 	case *ast.ExpressionStatement:
@@ -170,6 +170,7 @@ func (e *Evaluator) evalFunctionCall(node *ast.FunctionCall, env *object.Environ
 	if len(args) == 1 && isError(args[0]) {
 		return args[0]
 	}
+	return CallFunction(node.Function.String(), args)
 }
 
 func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
