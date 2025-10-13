@@ -20,6 +20,11 @@ $(COGEN): $(GOFILES)
 	@mkdir -p $(BIN_DIR)
 	go build -o $@ ./cmd/cogen
 
+# Build repl
+$(REPL): $(GOFILES)
+	@mkdir -p $(BIN_DIR)
+	go build -o $@ ./cmd/repl
+
 # Clean up build artifacts
 clean:
 	rm -rf $(BIN_DIR)

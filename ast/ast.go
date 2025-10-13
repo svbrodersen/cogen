@@ -21,9 +21,14 @@ type Expression interface {
 	expressionNode()
 }
 
+type Input struct {
+	Ident *Identifier
+	Value string
+}
+
 type Program struct {
 	Name       string
-	Variables  []*Identifier
+	Variables  []Input
 	Statements []*LabelStatement
 }
 
@@ -82,6 +87,11 @@ type IntegerLiteral struct {
 	Value int64
 }
 
+type BooleanLiteral struct {
+	Token token.Token //true or false
+	Value bool
+}
+
 type FunctionCall struct {
 	Token     token.Token // Identifier token
 	Function  Expression  // Identifier
@@ -130,7 +140,7 @@ func (p *Program) String() string {
 		out.WriteString(p.Name)
 		args := []string{}
 		for _, a := range p.Variables {
-			args = append(args, a.String())
+			args = append(args, a.Ident.String())
 		}
 		out.WriteString("(")
 		out.WriteString(strings.Join(args, ", "))
@@ -217,10 +227,13 @@ func (ce *CallExpression) String() string {
 	return out.String()
 }
 
-func (i *IntegerLiteral) valueNode()            {}
 func (il *IntegerLiteral) expressionNode()      {}
 func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
 func (il *IntegerLiteral) String() string       { return il.Token.Literal }
+
+func (b *BooleanLiteral) expressionNode()      {}
+func (b *BooleanLiteral) TokenLiteral() string { return b.Token.Literal }
+func (b *BooleanLiteral) String() string       { return b.Token.Literal }
 
 func (es *ExpressionStatement) statementNode() {}
 func (es *ExpressionStatement) TokenLiteral() string {

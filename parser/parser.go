@@ -65,6 +65,8 @@ func New(l lexer.Lexer) *Parser {
 	// prefix
 	p.registerPrefix(token.QUOTE, p.parseConstant)
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
+	p.registerPrefix(token.TRUE, p.parseBooleanLiteral)
+	p.registerPrefix(token.FALSE, p.parseBooleanLiteral)
 	p.registerPrefix(token.NUMBER, p.parseIntegerLiteral)
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
@@ -207,9 +209,9 @@ func (p *Parser) parseLabel() ast.Label {
 	}
 }
 
-func (p *Parser) parseFunction() (string, []*ast.Identifier) {
+func (p *Parser) parseFunction() (string, []ast.Input) {
 	name := ""
-	variables := []*ast.Identifier{}
+	variables := []ast.Input{}
 	if !p.peakTokenIs(token.LPAREN) {
 		return name, variables
 	}
@@ -218,7 +220,7 @@ func (p *Parser) parseFunction() (string, []*ast.Identifier) {
 	// now on (
 	for !p.curTokenIs(token.RPAREN) && !p.curTokenIs(token.EOF) {
 		p.nextToken()
-		variables = append(variables, p.requireIdentifier())
+		variables = append(variables, ast.Input{Ident: p.requireIdentifier(), Value: ""})
 		p.nextToken()
 	}
 	// eat )
@@ -324,6 +326,16 @@ func (p *Parser) parseIntegerLiteral() ast.Expression {
 		p.newError(msg)
 	}
 	lit.Value = value
+	return lit
+}
+
+func (p *Parser) parseBooleanLiteral() ast.Expression {
+	lit := &ast.BooleanLiteral{Token: p.curToken}
+	if lit.Token.Literal == "true" {
+		lit.Value = true
+	} else {
+		lit.Value = false
+	}
 	return lit
 }
 

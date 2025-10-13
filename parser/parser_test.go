@@ -378,8 +378,8 @@ func TestAckermannFunc(t *testing.T) {
 		t.Fatalf("program.Name is not 'ack', got %s", program.Name)
 	}
 
-	testIdentifier(t, program.Variables[0], "m")
-	testIdentifier(t, program.Variables[1], "n")
+	testIdentifier(t, program.Variables[0].Ident, "m")
+	testIdentifier(t, program.Variables[1].Ident, "n")
 
 	// Check label statements
 	stmt := testLabelStatement(t, program.Statements[0], "1", 1)[0]

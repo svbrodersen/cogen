@@ -42,11 +42,11 @@ func (c *Cogen) Gen(delta []int) (*ast.Program, error) {
 	// Note the first var as static
 	c.state = &State{}
 	c.state.delta = make(map[string]*ast.Identifier, len(delta))
-	vars := make([]*ast.Identifier, len(delta))
+	vars := make([]ast.Input, len(delta))
 	for i, delt := range delta {
-		cpy := *c.OriginalProgram.Variables[delt]
-		c.addDelta(&cpy)
-		vars[i] = &cpy
+		cpy := c.OriginalProgram.Variables[delt]
+		c.addDelta(cpy.Ident)
+		vars[i] = cpy
 	}
 	c.state.extension = &ast.Program{
 		Name:      c.OriginalProgram.Name,
@@ -78,8 +78,8 @@ func (c *Cogen) dynamicVariables() []ast.Expression {
 	)
 	count := 0
 	for _, item := range c.OriginalProgram.Variables {
-		if !c.existsDelta(item) {
-			vars[count] = item
+		if !c.existsDelta(item.Ident) {
+			vars[count] = item.Ident
 			count += 1
 		}
 	}
