@@ -4,7 +4,6 @@ import (
 	"cogen/ast"
 	"cogen/object"
 	"fmt"
-	"log"
 )
 
 var (
@@ -32,7 +31,7 @@ func (e *Evaluator) Eval(node ast.Node, env *object.Environment) object.Object {
 	case *ast.Program:
 		return e.evalProgram(node, env)
 	case *ast.SymbolExpression:
-		return &object.String{Value: node.Value}
+		return &object.Symbol{Value: node.Value}
 	case *ast.Constant:
 		return e.Eval(node.Value, env)
 	case *ast.ExpressionStatement:
@@ -133,16 +132,17 @@ func isTruthy(obj object.Object) bool {
 }
 
 func (e *Evaluator) evalCallExpression(node *ast.CallExpression, env *object.Environment) object.Object {
-	var labelStmt *ast.LabelStatement
+	//TODO: Fix this
+	var labelStmt ast.LabelStatement
 	for _, v := range e.Program.Statements {
 		if v.Label == node.Label {
-			labelStmt = v
+			labelStmt = *v
 			break
 		}
 	}
 
 	newEnv := object.NewEnclosedEnvironment(env)
-	evaluated := e.Eval(labelStmt, newEnv)
+	evaluated := e.Eval(&labelStmt, newEnv)
 	return unwrapReturnValue(evaluated)
 }
 
@@ -174,7 +174,6 @@ func (e *Evaluator) evalFunctionCall(node *ast.FunctionCall, env *object.Environ
 }
 
 func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
-	log.Printf("node: %v", node.Value)
 	val, ok := env.Get(node.Value)
 	if !ok {
 		return newError("identifier not found: %s", node.Value)

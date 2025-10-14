@@ -12,17 +12,20 @@ func head(s *object.List) object.Object {
 	return s.Value[0]
 }
 
+// Should be all but first element
 func tail(s *object.List) object.Object {
 	if len(s.Value) == 0 {
 		return newError("tl called on empty list")
 	}
-	return s.Value[len(s.Value)-1]
+	return &object.List{Value: s.Value[1:(len(s.Value) - 1)]}
 }
 
+// code should be a Object list, and we add to the first element.
 func o[T object.ValueString](s1 T, s2 T) object.Object {
 	return &object.String{Value: s1.GetValue() + s2.GetValue() + "\n"}
 }
 
+// Should create a object.List
 func list[T object.ValueString](a []T) object.Object {
 	var out bytes.Buffer
 	out.WriteString("(")
@@ -56,7 +59,7 @@ func CallFunction(name string, args []object.Object) object.Object {
 		if !ok {
 			return newError("function hd expects list, got %s", args[0].Type())
 		}
-		return head(input)
+		return tail(input)
 	case "o":
 		if len(args) != 2 {
 			return newError("function o takes 2 input, got %d", len(args))
@@ -85,4 +88,3 @@ func CallFunction(name string, args []object.Object) object.Object {
 		return newError("undefined function %s", name)
 	}
 }
-
