@@ -73,6 +73,8 @@ func (e *Evaluator) Eval(node ast.Node, env *object.Environment) object.Object {
 		return e.evalCallExpression(node, env)
 	case *ast.FunctionCall:
 		return e.evalFunctionCall(node, env)
+	case *ast.List:
+		return e.evalList(node, env)
 	}
 	return nil
 }
@@ -144,6 +146,10 @@ func (e *Evaluator) evalCallExpression(node *ast.CallExpression, env *object.Env
 	newEnv := object.NewEnclosedEnvironment(env)
 	evaluated := e.Eval(labelStmt, newEnv)
 	return unwrapReturnValue(evaluated)
+}
+
+func (e *Evaluator) evalList(node *ast.List, env *object.Environment) object.Object {
+	objs := e.evalExpressions(node.Value, env)
 }
 
 func unwrapReturnValue(obj object.Object) object.Object {

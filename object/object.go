@@ -72,13 +72,13 @@ func (s *Symbol) Type() ObjectType { return SYMBOL }
 func (s *Symbol) GetValue() string { return s.Value }
 
 type List struct {
-	Value []*Symbol
+	Value []Object
 }
 
 func (s *List) Inspect() string {
 	var out bytes.Buffer
 	for _, v := range s.Value {
-		out.WriteString(v.Value)
+		out.WriteString(v.Inspect())
 	}
 
 	return out.String()
