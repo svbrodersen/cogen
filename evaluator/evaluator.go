@@ -54,6 +54,8 @@ func (e *Evaluator) Eval(node ast.Node, env *object.Environment) object.Object {
 		return evalInfixExpression(node.Operator, left, right)
 	case *ast.IfStatement:
 		return e.evalIfExpression(node, env)
+	case *ast.GotoStatement:
+		return e.evalGotoExpression(node, env)
 	case *ast.ReturnStatement:
 		val := e.Eval(node.ReturnValue, env)
 		if isError(val) {
@@ -70,6 +72,8 @@ func (e *Evaluator) Eval(node ast.Node, env *object.Environment) object.Object {
 		env.Set(node.Left.Value, val)
 	case *ast.CallExpression:
 		return e.evalCallExpression(node, env)
+	case *ast.Label:
+		return e.evalLabel(node, env)
 	case *ast.FunctionCall:
 		return e.evalFunctionCall(node, env)
 	case *ast.List:
@@ -86,18 +90,32 @@ func isError(obj object.Object) bool {
 }
 
 func (e *Evaluator) evalProgram(prog *ast.Program, env *object.Environment) object.Object {
-	var result object.Object
-
-	for _, lstms := range prog.Statements {
-		result = e.evalStatements(lstms.Statements, env)
-		switch result := result.(type) {
-		case *object.ReturnValue:
-			return result.Value
-		case *object.Error:
-			return result
-		}
+	result := e.Eval(prog.Statements[0], env)
+	switch result := result.(type) {
+	case *object.ReturnValue:
+		return result.Value
+	case *object.Error:
+		return result
 	}
 	return result
+}
+
+func (e *Evaluator) evalLabel(node *ast.Label, env *object.Environment) object.Object {
+	var labelStmt *ast.LabelStatement
+	for _, v := range e.Program.Statements {
+		if v.Label.Value == node.Value {
+			labelStmt = v
+			break
+		}
+	}
+
+	evaluated := e.Eval(labelStmt, env)
+	return evaluated
+}
+
+func (e *Evaluator) evalGotoExpression(node *ast.GotoStatement, env *object.Environment) object.Object {
+	evaluated := e.Eval(&node.Label, env)
+	return evaluated
 }
 
 func (e *Evaluator) evalStatements(stmts []ast.Statement, env *object.Environment) object.Object {
@@ -109,6 +127,7 @@ func (e *Evaluator) evalStatements(stmts []ast.Statement, env *object.Environmen
 		if result != nil {
 			rt := result.Type()
 			if rt == object.RETURN_VALUE || rt == object.ERROR {
+
 				return result
 			}
 		}
@@ -134,22 +153,21 @@ func isTruthy(obj object.Object) bool {
 }
 
 func (e *Evaluator) evalCallExpression(node *ast.CallExpression, env *object.Environment) object.Object {
-	//TODO: Fix this
-	var labelStmt ast.LabelStatement
+	var labelStmt *ast.LabelStatement
 	for _, v := range e.Program.Statements {
-		if v.Label == node.Label {
-			labelStmt = *v
+		if v.Label.Value == node.Label.Value {
+			labelStmt = v
 			break
 		}
 	}
 
 	newEnv := object.NewEnclosedEnvironment(env)
-	evaluated := e.Eval(&labelStmt, newEnv)
+	evaluated := e.Eval(labelStmt, newEnv)
 	return unwrapReturnValue(evaluated)
 }
 
 func (e *Evaluator) evalList(node *ast.List, env *object.Environment) object.Object {
-	objs := e.evalExpressions(node.Value, env)
+	return &object.List{}
 }
 
 func unwrapReturnValue(obj object.Object) object.Object {
@@ -251,13 +269,29 @@ func intergetInfix(operator string, leftObj, rightObj object.Object) object.Obje
 	case "/":
 		return &object.Integer{Value: left / right}
 	case "=":
-		return &object.Boolean{Value: left == right}
+		if left == right {
+			return TRUE
+		} else {
+			return FALSE
+		}
 	case "!=":
-		return &object.Boolean{Value: left != right}
+		if left != right {
+			return TRUE
+		} else {
+			return FALSE
+		}
 	case "<":
-		return &object.Boolean{Value: left < right}
+		if left < right {
+			return TRUE
+		} else {
+			return FALSE
+		}
 	case ">":
-		return &object.Boolean{Value: left > right}
+		if left > right {
+			return TRUE
+		} else {
+			return FALSE
+		}
 	default:
 		return newError("unknown operator: %s %s %s", leftObj.Type(), operator, rightObj.Type())
 	}
@@ -268,9 +302,17 @@ func booleanInfix(operator string, leftObj, rightObj object.Object) object.Objec
 	right := rightObj.(*object.Boolean).Value
 	switch operator {
 	case "=":
-		return &object.Boolean{Value: left == right}
+		if left == right {
+			return TRUE
+		} else {
+			return FALSE
+		}
 	case "!=":
-		return &object.Boolean{Value: left != right}
+		if left != right {
+			return TRUE
+		} else {
+			return FALSE
+		}
 	default:
 		return newError("unknown operator: %s %s %s", leftObj.Type(), operator, rightObj.Type())
 	}

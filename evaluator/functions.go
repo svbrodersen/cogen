@@ -5,6 +5,8 @@ import (
 	"cogen/object"
 )
 
+//TODO: Have to update  these, also rename to primitive operators, not functions.
+
 func head(s *object.List) object.Object {
 	if len(s.Value) == 0 {
 		return newError("hd called on empty list")

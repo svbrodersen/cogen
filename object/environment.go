@@ -1,5 +1,10 @@
 package object
 
+import (
+	"bytes"
+	"fmt"
+)
+
 type Environment struct {
 	store map[string]Object
 	outer *Environment
@@ -21,6 +26,17 @@ func (e *Environment) Get(name string) (Object, bool) {
 func (e *Environment) Set(name string, val Object) Object {
 	e.store[name] = val
 	return val
+}
+
+func (e *Environment) String() string {
+	var out bytes.Buffer
+	for key, value := range e.store {
+		out.WriteString(fmt.Sprintf("(%v, %v) ", key, value))
+	}
+	if e.outer != nil {
+		out.WriteString(e.outer.String())
+	}
+	return out.String()
 }
 
 func NewEnclosedEnvironment(outer *Environment) *Environment {

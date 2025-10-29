@@ -159,7 +159,7 @@ func TestCallExpression(t *testing.T) {
 		input    string
 		expected int64
 	}{
-		{" 1: c := 1; b := call 2; return c; 2: c:= 5; return 10;", 1},
+		{"1: c := 1; b := call 2; return c; 2: c:= 5; return 10;", 1},
 		{"1: b := call 2; b; \n2: a := 5*5; return a;", 25},
 	}
 	for _, tt := range tests {
