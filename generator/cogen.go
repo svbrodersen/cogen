@@ -103,9 +103,9 @@ func (c *Cogen) processHeader() {
 				Type:    token.ASSIGN,
 				Literal: ":=",
 			},
-			Right: &ast.FunctionCall{
+			Right: &ast.PrimitiveCall{
 				Token:     newHeader.Token,
-				Function:  newHeader,
+				Primitive: newHeader,
 				Arguments: append(dynamicVar, upliftL),
 			},
 		},
@@ -147,9 +147,9 @@ func (c *Cogen) processHeader() {
 }
 
 func (c *Cogen) labelUplift(label string) ast.Expression {
-	listFunc := ast.FunctionCall{
-		Token:    newToken(token.LPAREN, "("),
-		Function: newIdentifier("list"),
+	listFunc := ast.PrimitiveCall{
+		Token:     newToken(token.LPAREN, "("),
+		Primitive: newIdentifier("list"),
 	}
 	arguments := make(
 		[]ast.Expression,
@@ -189,9 +189,9 @@ func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 		log.Fatal("exprup: how is this call expression?")
 	case *ast.Identifier:
 		if c.existsDelta(v) {
-			return &ast.FunctionCall{
-				Token:    newToken(token.LPAREN, "("),
-				Function: newIdentifier("list"),
+			return &ast.PrimitiveCall{
+				Token:     newToken(token.LPAREN, "("),
+				Primitive: newIdentifier("list"),
 				Arguments: []ast.Expression{
 					&ast.Constant{
 						Token: newToken(token.CONSTANT, "'"),
@@ -215,9 +215,9 @@ func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 		arguments[0] = c.exprUplift(v.Left)
 		arguments[2] = c.exprUplift(v.Right)
 
-		return &ast.FunctionCall{
+		return &ast.PrimitiveCall{
 			Token:     newToken(token.LPAREN, "("),
-			Function:  newIdentifier("list"),
+			Primitive: newIdentifier("list"),
 			Arguments: arguments,
 		}
 	case *ast.PrefixExpression:
@@ -228,15 +228,15 @@ func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 		}
 		arguments[1] = c.exprUplift(v.Right)
 
-		return &ast.FunctionCall{
+		return &ast.PrimitiveCall{
 			Token:     newToken(token.LPAREN, "("),
-			Function:  newIdentifier("list"),
+			Primitive: newIdentifier("list"),
 			Arguments: arguments,
 		}
-	case *ast.FunctionCall:
-		newStmt := &ast.FunctionCall{
-			Token:    v.Token,
-			Function: v.Function,
+	case *ast.PrimitiveCall:
+		newStmt := &ast.PrimitiveCall{
+			Token:     v.Token,
+			Primitive: v.Primitive,
 		}
 		copy(newStmt.Arguments, v.Arguments)
 		return newStmt
@@ -284,9 +284,9 @@ func (c *Cogen) processPoly(stmt *ast.LabelStatement) *ast.LabelStatement {
 	l1.Statements = []ast.Statement{
 		&ast.IfStatement{
 			Token: newToken(token.IF, "if"),
-			Cond: &ast.FunctionCall{
+			Cond: &ast.PrimitiveCall{
 				Token:     doneFunc.Token,
-				Function:  doneFunc,
+				Primitive: doneFunc,
 				Arguments: []ast.Expression{upliftL, code},
 			},
 			LabelTrue: ast.Label{
@@ -302,9 +302,9 @@ func (c *Cogen) processPoly(stmt *ast.LabelStatement) *ast.LabelStatement {
 		&ast.AssignmentStatement{
 			Left:  newIdentifier("code"),
 			Token: newToken(token.ASSIGN, ":="),
-			Right: &ast.FunctionCall{
+			Right: &ast.PrimitiveCall{
 				Token:     newblock.Token,
-				Function:  newblock,
+				Primitive: newblock,
 				Arguments: []ast.Expression{code, upliftL},
 			},
 		},
@@ -409,8 +409,8 @@ func (c *Cogen) processAssginment(stmt *ast.AssignmentStatement) {
 	switch expr := stmt.Right.(type) {
 	case *ast.CallExpression:
 		c.processCallAssginment(stmt, expr)
-	case *ast.FunctionCall:
-		c.processFunctionCall(stmt, expr)
+	case *ast.PrimitiveCall:
+		c.processPrimitiveCall(stmt, expr)
 	default:
 		c.processRegularAssginment(stmt)
 	}
@@ -432,9 +432,9 @@ func (c *Cogen) processRegularAssginment(stmt *ast.AssignmentStatement) {
 		o := newIdentifier("o")
 		leftCpy := *stmt.Left
 		c.addStatement(codeAssign(
-			&ast.FunctionCall{
+			&ast.PrimitiveCall{
 				Token:     o.Token,
-				Function:  o,
+				Primitive: o,
 				Arguments: []ast.Expression{code, underlineAssign(&leftCpy, upliftE)},
 			}))
 		c.removeDelta(stmt.Left)
@@ -483,9 +483,9 @@ func (c *Cogen) processCallAssginment(
 		o := newIdentifier("o")
 		leftCpy := *stmt.Left
 		c.addStatement(codeAssign(
-			&ast.FunctionCall{
+			&ast.PrimitiveCall{
 				Token:     o.Token,
-				Function:  o,
+				Primitive: o,
 				Arguments: []ast.Expression{code, underlineCall(&leftCpy, upliftL)},
 			}))
 
@@ -494,18 +494,18 @@ func (c *Cogen) processCallAssginment(
 	}
 }
 
-func (c *Cogen) processFunctionCall(
+func (c *Cogen) processPrimitiveCall(
 	stmt *ast.AssignmentStatement,
-	call *ast.FunctionCall,
+	call *ast.PrimitiveCall,
 ) {
 	callCpy := *call
 	code := newIdentifier("code")
 	o := newIdentifier("o")
 	leftCpy := *stmt.Left
 	c.addStatement(codeAssign(
-		&ast.FunctionCall{
+		&ast.PrimitiveCall{
 			Token:     o.Token,
-			Function:  o,
+			Primitive: o,
 			Arguments: []ast.Expression{code, underlineCall(&leftCpy, &callCpy)},
 		}))
 	// and update delta
@@ -610,9 +610,9 @@ func (c *Cogen) processIf(stmt *ast.IfStatement) {
 				Type:    token.RETURN,
 				Literal: "return",
 			},
-			ReturnValue: &ast.FunctionCall{
+			ReturnValue: &ast.PrimitiveCall{
 				Token:     o.Token,
-				Function:  o,
+				Primitive: o,
 				Arguments: []ast.Expression{code, underlineIf(eu, lu1, lu2)},
 			},
 		})
@@ -626,9 +626,9 @@ func (c *Cogen) processReturn(stmt *ast.ReturnStatement) {
 	code := newIdentifier("code")
 	c.addStatement(&ast.ReturnStatement{
 		Token: stmt.Token,
-		ReturnValue: &ast.FunctionCall{
+		ReturnValue: &ast.PrimitiveCall{
 			Token:     o.Token,
-			Function:  o,
+			Primitive: o,
 			Arguments: []ast.Expression{code, underlineReturn(eu)},
 		},
 	})
@@ -696,10 +696,10 @@ func (c *Cogen) newLabel(num int, label string) *ast.LabelStatement {
 	}
 }
 
-func newFunction(function ast.Expression, arguments []ast.Expression) ast.Expression {
-	return &ast.FunctionCall{
+func newPrimitive(primitive ast.Expression, arguments []ast.Expression) ast.Expression {
+	return &ast.PrimitiveCall{
 		Token:     newToken(token.LPAREN, "("),
-		Function:  function,
+		Primitive: primitive,
 		Arguments: arguments,
 	}
 }
@@ -751,9 +751,9 @@ func underlineCall(x *ast.Identifier, l ast.Expression) ast.Expression {
 	arguments := []ast.Expression{
 		newConstant(newSymbol(x.String())),
 		newConstant(newSymbol(":=")),
-		newFunction(newSymbol("list"), arg1),
+		newPrimitive(newSymbol("list"), arg1),
 	}
-	return newFunction(newSymbol("list"), arguments)
+	return newPrimitive(newSymbol("list"), arguments)
 }
 
 func underlineAssign(x *ast.Identifier, exp ast.Expression) ast.Expression {
@@ -762,7 +762,7 @@ func underlineAssign(x *ast.Identifier, exp ast.Expression) ast.Expression {
 		newConstant(newSymbol(":=")),
 		exp,
 	}
-	return newFunction(newSymbol("list"), arguments)
+	return newPrimitive(newSymbol("list"), arguments)
 }
 
 func underlineIf(e ast.Expression,
@@ -775,7 +775,7 @@ func underlineIf(e ast.Expression,
 		l1,
 		l2,
 	}
-	return newFunction(newIdentifier("list"), arguments)
+	return newPrimitive(newIdentifier("list"), arguments)
 }
 
 func underlineReturn(e ast.Expression) ast.Expression {
@@ -783,7 +783,7 @@ func underlineReturn(e ast.Expression) ast.Expression {
 		newConstant(newSymbol("return")),
 		e,
 	}
-	return newFunction(newIdentifier("list"), arguments)
+	return newPrimitive(newIdentifier("list"), arguments)
 }
 
 func getVars(exp ast.Expression) []*ast.Identifier {
@@ -802,7 +802,7 @@ func getVars(exp ast.Expression) []*ast.Identifier {
 		}
 	case *ast.Constant:
 		keys = append(keys, getVars(v.Value)...)
-	case *ast.FunctionCall:
+	case *ast.PrimitiveCall:
 		for _, item := range v.Arguments {
 			keys = append(keys, getVars(item)...)
 		}

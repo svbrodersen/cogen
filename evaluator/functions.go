@@ -42,29 +42,29 @@ func list[T object.ValueString](a []T) object.Object {
 	return &object.String{Value: out.String()}
 }
 
-func CallFunction(name string, args []object.Object) object.Object {
+func CallPrimitive(name string, args []object.Object) object.Object {
 	switch name {
 	case "hd":
 		if len(args) != 1 {
-			return newError("function hd takes one input, got %d", len(args))
+			return newError("primitive hd takes one input, got %d", len(args))
 		}
 		input, ok := args[0].(*object.List)
 		if !ok {
-			return newError("function hd expects list, got %s", args[0].Type())
+			return newError("primitive hd expects list, got %s", args[0].Type())
 		}
 		return head(input)
 	case "tl":
 		if len(args) != 1 {
-			return newError("function hd takes one input, got %d", len(args))
+			return newError("primitive hd takes one input, got %d", len(args))
 		}
 		input, ok := args[0].(*object.List)
 		if !ok {
-			return newError("function hd expects list, got %s", args[0].Type())
+			return newError("primitive hd expects list, got %s", args[0].Type())
 		}
 		return tail(input)
 	case "o":
 		if len(args) != 2 {
-			return newError("function o takes 2 input, got %d", len(args))
+			return newError("primitive o takes 2 input, got %d", len(args))
 		}
 		item1, ok := args[0].(object.ValueString)
 		if !ok {
@@ -87,6 +87,6 @@ func CallFunction(name string, args []object.Object) object.Object {
 		}
 		return list(items)
 	default:
-		return newError("undefined function %s", name)
+		return newError("undefined primitive %s", name)
 	}
 }

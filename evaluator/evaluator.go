@@ -74,10 +74,10 @@ func (e *Evaluator) Eval(node ast.Node, env *object.Environment) object.Object {
 		return e.evalCallExpression(node, env)
 	case *ast.Label:
 		return e.evalLabel(node, env)
-	case *ast.FunctionCall:
-		return e.evalFunctionCall(node, env)
 	case *ast.List:
 		return e.evalList(node, env)
+	case *ast.PrimitiveCall:
+		return e.evalPrimitiveCall(node, env)
 	}
 	return nil
 }
@@ -189,12 +189,12 @@ func (e *Evaluator) evalExpressions(exps []ast.Expression, env *object.Environme
 	return result
 }
 
-func (e *Evaluator) evalFunctionCall(node *ast.FunctionCall, env *object.Environment) object.Object {
+func (e *Evaluator) evalPrimitiveCall(node *ast.PrimitiveCall, env *object.Environment) object.Object {
 	args := e.evalExpressions(node.Arguments, env)
 	if len(args) == 1 && isError(args[0]) {
 		return args[0]
 	}
-	return CallFunction(node.Function.String(), args)
+	return CallPrimitive(node.Primitive.String(), args)
 }
 
 func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {

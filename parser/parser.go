@@ -75,7 +75,7 @@ func New(l lexer.Lexer) *Parser {
 
 	// infix
 	p.registerInfix(token.ADD, p.parseInfixExpression)
-	p.registerInfix(token.LPAREN, p.parseFunctionCall)
+	p.registerInfix(token.LPAREN, p.parsePrimitiveCall)
 	p.registerInfix(token.SUB, p.parseInfixExpression)
 	p.registerInfix(token.SLASH, p.parseInfixExpression)
 	p.registerInfix(token.ASTERISK, p.parseInfixExpression)
@@ -209,7 +209,7 @@ func (p *Parser) parseLabel() ast.Label {
 	}
 }
 
-func (p *Parser) parseFunction() (string, []ast.Input) {
+func (p *Parser) parseFunctionHeader() (string, []ast.Input) {
 	name := ""
 	variables := []ast.Input{}
 	if !p.peakTokenIs(token.LPAREN) {
@@ -486,8 +486,8 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 	return expression
 }
 
-func (p *Parser) parseFunctionCall(function ast.Expression) ast.Expression {
-	exp := &ast.FunctionCall{Token: p.curToken, Function: function}
+func (p *Parser) parsePrimitiveCall(primitive ast.Expression) ast.Expression {
+	exp := &ast.PrimitiveCall{Token: p.curToken, Primitive: primitive}
 	exp.Arguments = p.parseCallArguments()
 	return exp
 }
@@ -537,7 +537,7 @@ func (p *Parser) parseGroupedExpression() ast.Expression {
 func (p *Parser) ParseProgram() *ast.Program {
 	program := &ast.Program{}
 	program.Statements = []*ast.LabelStatement{}
-	program.Name, program.Variables = p.parseFunction()
+	program.Name, program.Variables = p.parseFunctionHeader()
 
 	for p.curToken.Type != token.EOF {
 		stmt := p.parseLabelStatement()

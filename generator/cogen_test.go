@@ -12,7 +12,6 @@ import (
 func TestCogen_Gen(t *testing.T) {
 	tests := []struct {
 		name string // description of this test case
-		// Named input parameters for target function.
 		prog string
 		want string
 	}{

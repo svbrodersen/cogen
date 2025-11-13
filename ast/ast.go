@@ -92,9 +92,9 @@ type BooleanLiteral struct {
 	Value bool
 }
 
-type FunctionCall struct {
+type PrimitiveCall struct {
 	Token     token.Token // Identifier token
-	Function  Expression  // Identifier
+	Primitive Expression  // Identifier
 	Arguments []Expression
 }
 
@@ -152,15 +152,15 @@ func (p *Program) String() string {
 	return out.String()
 }
 
-func (fc *FunctionCall) expressionNode()      {}
-func (fc *FunctionCall) TokenLiteral() string { return fc.Token.Literal }
-func (fc *FunctionCall) String() string {
+func (fc *PrimitiveCall) expressionNode()      {}
+func (fc *PrimitiveCall) TokenLiteral() string { return fc.Token.Literal }
+func (fc *PrimitiveCall) String() string {
 	var out bytes.Buffer
 	args := []string{}
 	for _, a := range fc.Arguments {
 		args = append(args, a.String())
 	}
-	out.WriteString(fc.Function.String())
+	out.WriteString(fc.Primitive.String())
 	out.WriteString("(")
 	out.WriteString(strings.Join(args, ", "))
 	out.WriteString(")")
