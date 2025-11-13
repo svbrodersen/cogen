@@ -45,7 +45,7 @@ func main() {
 	parsed_program := p.ParseProgram()
 
 	if len(p.Errors()) != 0 {
-		printParserErrors(os.Stdout, p.Errors())
+		io.WriteString(os.Stdout, p.GetErrorMessage())
 		return
 	}
 	e := evaluator.New(parsed_program)

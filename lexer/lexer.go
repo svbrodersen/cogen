@@ -75,7 +75,7 @@ func (l *DefaultLexer) NextToken() token.Token {
 	l.skipWhitespace()
 
 	if l.quotedContext {
-		if isDigit(l.ch) {
+		if isDigit(l.ch) && isWhitespace(l.peakChar()) {
 			col := l.column
 			num := l.readNumber()
 			tok = newToken(l, token.NUMBER, num)

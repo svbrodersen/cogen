@@ -21,6 +21,7 @@ func New(program *ast.Program) *Evaluator {
 }
 
 func (e *Evaluator) Eval(node ast.Node, env *object.Environment) object.Object {
+	fmt.Printf("Node: %s\nEnv: %s\n", node.String(), env)
 	switch node := node.(type) {
 	case *ast.IntegerLiteral:
 		return &object.Integer{Value: node.Value}
@@ -167,6 +168,7 @@ func (e *Evaluator) evalCallExpression(node *ast.CallExpression, env *object.Env
 }
 
 func (e *Evaluator) evalList(node *ast.List, env *object.Environment) object.Object {
+	//TODO: Next job
 	return &object.List{}
 }
 

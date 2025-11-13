@@ -277,7 +277,6 @@ func (p *Parser) parseSymbolExpression() ast.Expression {
 // deferentiate between a list and a grouped expression?
 func (p *Parser) parseConstantList() ast.Expression {
 	stmt := &ast.List{Token: p.curToken}
-	// Move over (
 	// If next token is our end, then we set back quoted context to false
 	if p.peakTokenIs(token.RPAREN) {
 		p.l.SetQuotedContext(false)
@@ -288,13 +287,15 @@ func (p *Parser) parseConstantList() ast.Expression {
 	var value ast.Expression
 	for !p.curTokenIs(token.RPAREN) {
 		switch p.curToken.Type {
+		case token.LPAREN:
+			value = p.parseConstantList()
 		case token.QUOTE:
 			value = p.parseConstant()
 		case token.SYMBOL:
 			value = p.parseSymbolExpression()
 		}
 		if value == nil {
-			msg := fmt.Sprintf("list: could not parse %q", p.curToken.Literal)
+			msg := fmt.Sprintf("list: could not parse %s of type %s", p.curToken.Literal, p.curToken.Type)
 			p.newError(msg)
 		}
 		// If next token is our end, then we set back quoted context to false
