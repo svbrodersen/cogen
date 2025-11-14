@@ -167,6 +167,70 @@ func TestCallExpression(t *testing.T) {
 	}
 }
 
+func TestPrimitiveCalls(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected any
+	}{
+		// hd
+		{"1: hd(list(10, 20, 30));", int64(10)},
+		{"1: hd('(10 20 30));", int64(10)},
+		// tl
+		{"1: tl(list(10, 20, 30));", []int64{20, 30}},
+		{"1: tl('(10 20 30));", []int64{20, 30}},
+		// o
+		{"1: o(list(1, 2, 3, 4), 5);", []int64{1, 2, 3, 4, 5}},
+		{"1: o('(1 2 3 4), 5);", []int64{1, 2, 3, 4, 5}},
+		// list
+		{"1: list(7, 8, 9);", []int64{7, 8, 9}},
+		// new_tail (simple case)
+		{"1: new_tail(1, list(list(1, 2), list(2, 3)));", []int64{2, 3}},
+		// hd error
+		{"1: hd(list());", "hd called on empty list"},
+		// tl error
+		{"1: tl(list());", "tl called on empty list"},
+		// o error
+		{"1: o(1);", "o takes at least 2 inputs, got 1"},
+		// list error
+		{"1: list();", "list expected atleast one input, got 0"},
+		// new_tail error
+		{"1: new_tail(1, 2);", "new_tail expects second input to be list of list, got INTEGER"},
+	}
+
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+		switch expected := tt.expected.(type) {
+		case int64:
+			testIntegerObject(t, evaluated, expected)
+		case []int64:
+			listObj, ok := evaluated.(*object.List)
+			if !ok {
+				t.Errorf("object is not List. got=%T (%+v)", evaluated, evaluated)
+				continue
+			}
+			if len(listObj.Value) != len(expected) {
+				t.Errorf("list has wrong length. got=%d, want=%d", len(listObj.Value), len(expected))
+				continue
+			}
+			for i, v := range expected {
+				intObj, ok := listObj.Value[i].(*object.Integer)
+				if !ok || intObj.Value != v {
+					t.Errorf("list element %d wrong. got=%v, want=%d", i, listObj.Value[i], v)
+				}
+			}
+		case string:
+			errObj, ok := evaluated.(*object.Error)
+			if !ok {
+				t.Errorf("expected error object. got=%T (%+v)", evaluated, evaluated)
+				continue
+			}
+			if errObj.Message != expected {
+				t.Errorf("wrong error message. expected=%q, got=%q", expected, errObj.Message)
+			}
+		}
+	}
+}
+
 func testEval(input string) object.Object {
 	l := lexer.New(input)
 	p := parser.New(l)

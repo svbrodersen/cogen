@@ -20,6 +20,7 @@ func tail(s *object.List) object.Object {
 }
 
 // code should be a Object list, and we add to the first element.
+// TODO: Causes panic atm
 func o(s1 *object.List, inputs ...object.Object) object.Object {
 	val := append(s1.Value, inputs...)
 	return &object.List{Value: val}
