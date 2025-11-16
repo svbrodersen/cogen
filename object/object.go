@@ -32,14 +32,14 @@ type ValueString interface {
 
 type Object interface {
 	Type() ObjectType
-	Inspect() string
+	String() string
 }
 
 type Integer struct {
 	Value int64
 }
 
-func (i *Integer) Inspect() string  { return fmt.Sprintf("%d", i.Value) }
+func (i *Integer) String() string   { return fmt.Sprintf("%d", i.Value) }
 func (i *Integer) Type() ObjectType { return INTEGER }
 func (i *Integer) GetValue() string { return fmt.Sprint(i.Value) }
 
@@ -47,7 +47,7 @@ type Boolean struct {
 	Value bool
 }
 
-func (b *Boolean) Inspect() string  { return fmt.Sprintf("%t", b.Value) }
+func (b *Boolean) String() string   { return fmt.Sprintf("%t", b.Value) }
 func (b *Boolean) Type() ObjectType { return BOOLEAN }
 func (b *Boolean) GetValue() string { return fmt.Sprint(b.Value) }
 
@@ -55,7 +55,7 @@ type String struct {
 	Value string
 }
 
-func (s *String) Inspect() string {
+func (s *String) String() string {
 	return fmt.Sprintf("%s", s.Value)
 }
 func (s *String) Type() ObjectType { return STRING }
@@ -65,9 +65,17 @@ type Symbol struct {
 	Value string
 }
 
-func (s *Symbol) Inspect() string {
+func (s *Symbol) String() string {
+	return s.InspectInList(false)
+}
+
+func (s *Symbol) InspectInList(inList bool) string {
+	if inList {
+		return s.Value
+	}
 	return fmt.Sprintf("'%s", s.Value)
 }
+
 func (s *Symbol) Type() ObjectType { return SYMBOL }
 func (s *Symbol) GetValue() string { return s.Value }
 
@@ -75,20 +83,43 @@ type List struct {
 	Value []Object
 }
 
-func (s *List) Inspect() string {
+func (l *List) InspectInList(inList bool) string {
 	var out bytes.Buffer
-	for _, v := range s.Value {
-		out.WriteString(v.Inspect())
+	if !inList {
+		out.WriteString("'")
 	}
-
+	out.WriteString("(")
+	for i, elem := range l.Value {
+		var elemStr string
+		if elem == nil {
+			elemStr = "nil"
+		} else {
+			// Use InspectInList(true) if available, else fallback to Inspect()
+			if s, ok := elem.(interface{ InspectInList(bool) string }); ok {
+				elemStr = s.InspectInList(true)
+			} else {
+				elemStr = elem.String()
+			}
+		}
+		if i == len(l.Value)-1 {
+			out.WriteString(elemStr)
+		} else {
+			out.WriteString(elemStr + " ")
+		}
+	}
+	out.WriteString(")")
 	return out.String()
+}
+
+func (s *List) String() string {
+	return s.InspectInList(false)
 }
 func (s *List) Type() ObjectType { return LIST }
 
 type Null struct {
 }
 
-func (n *Null) Inspect() string  { return "null" }
+func (n *Null) String() string   { return "null" }
 func (n *Null) Type() ObjectType { return NULL }
 
 type ReturnValue struct {
@@ -96,11 +127,11 @@ type ReturnValue struct {
 }
 
 func (rv *ReturnValue) Type() ObjectType { return RETURN_VALUE }
-func (rv *ReturnValue) Inspect() string  { return rv.Value.Inspect() }
+func (rv *ReturnValue) String() string   { return rv.Value.String() }
 
 type Error struct {
 	Message string
 }
 
 func (e *Error) Type() ObjectType { return ERROR }
-func (e *Error) Inspect() string  { return "ERROR: " + e.Message }
+func (e *Error) String() string   { return "ERROR: " + e.Message }

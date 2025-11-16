@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"bytes"
 	"cogen/ast"
 	"cogen/object"
 	"fmt"
@@ -21,7 +22,9 @@ func New(program *ast.Program) *Evaluator {
 }
 
 func (e *Evaluator) Eval(node ast.Node, env *object.Environment) object.Object {
-	fmt.Printf("Node: %s\nEnv: %s\n", node.String(), env)
+	if node == nil {
+		return NULL
+	}
 	switch node := node.(type) {
 	case *ast.IntegerLiteral:
 		return &object.Integer{Value: node.Value}
@@ -168,8 +171,8 @@ func (e *Evaluator) evalCallExpression(node *ast.CallExpression, env *object.Env
 }
 
 func (e *Evaluator) evalList(node *ast.List, env *object.Environment) object.Object {
-	//TODO: Next job
-	return &object.List{}
+	value := e.evalExpressions(node.Value, env)
+	return &object.List{Value: value}
 }
 
 func unwrapReturnValue(obj object.Object) object.Object {
@@ -196,6 +199,11 @@ func (e *Evaluator) evalPrimitiveCall(node *ast.PrimitiveCall, env *object.Envir
 	if len(args) == 1 && isError(args[0]) {
 		return args[0]
 	}
+	var out bytes.Buffer
+	for _, val := range args {
+		out.WriteString(fmt.Sprintf("(%s, %s) ", val.String(), val.Type()))
+	}
+
 	return CallPrimitive(node.Primitive.String(), args)
 }
 
@@ -226,7 +234,7 @@ func evalPrefixExpression(operator string, right object.Object) object.Object {
 	case "-":
 		return evalMinusPrefixOperatorExpression(right)
 	default:
-		return newError("unknown operator: %s for %s", operator, right.Inspect())
+		return newError("unknown operator: %s for %s", operator, right.String())
 	}
 }
 

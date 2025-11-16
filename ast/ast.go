@@ -93,7 +93,7 @@ type BooleanLiteral struct {
 }
 
 type PrimitiveCall struct {
-	Token     token.Token // Identifier token
+	Token     token.Token // "(" Identifier token
 	Primitive Expression  // Identifier
 	Arguments []Expression
 }
@@ -349,10 +349,16 @@ func (ll *List) String() string {
 
 	out.WriteString("(")
 	for i, elem := range ll.Value {
-		if i == len(ll.Value)-1 {
-			out.WriteString(elem.String())
+		var elemStr string
+		if elem == nil {
+			elemStr = "nil"
 		} else {
-			out.WriteString(elem.String() + " ")
+			elemStr = elem.String()
+		}
+		if i == len(ll.Value)-1 {
+			out.WriteString(elemStr)
+		} else {
+			out.WriteString(elemStr + " ")
 		}
 	}
 	out.WriteString(")")

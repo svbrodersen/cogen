@@ -184,19 +184,16 @@ func TestPrimitiveCalls(t *testing.T) {
 		// list
 		{"1: list(7, 8, 9);", []int64{7, 8, 9}},
 		// new_tail (simple case)
-		{"1: new_tail(1, list(list(1, 2), list(2, 3)));", []int64{2, 3}},
+		{"1: new_tail(2, list('(1: 1), '(2: 3)));", []string{"'(2: 3)"}},
 		// hd error
 		{"1: hd(list());", "hd called on empty list"},
 		// tl error
 		{"1: tl(list());", "tl called on empty list"},
 		// o error
 		{"1: o(1);", "o takes at least 2 inputs, got 1"},
-		// list error
-		{"1: list();", "list expected atleast one input, got 0"},
 		// new_tail error
-		{"1: new_tail(1, 2);", "new_tail expects second input to be list of list, got INTEGER"},
+		{"1: new_tail(1, 2);", "new_tail expects second element to be a list, got INTEGER"},
 	}
-
 	for _, tt := range tests {
 		evaluated := testEval(tt.input)
 		switch expected := tt.expected.(type) {
@@ -216,6 +213,22 @@ func TestPrimitiveCalls(t *testing.T) {
 				intObj, ok := listObj.Value[i].(*object.Integer)
 				if !ok || intObj.Value != v {
 					t.Errorf("list element %d wrong. got=%v, want=%d", i, listObj.Value[i], v)
+				}
+			}
+		case []string:
+			listObj, ok := evaluated.(*object.List)
+			if !ok {
+				t.Errorf("object is not List. got=%T (%+v)", evaluated, evaluated)
+				continue
+			}
+			if len(listObj.Value) != len(expected) {
+				t.Errorf("list has wrong length. got=%d, want=%d", len(listObj.Value), len(expected))
+				continue
+			}
+			for i, v := range expected {
+				symObj, ok := listObj.Value[i].(*object.List)
+				if !ok || symObj.String() != v {
+					t.Errorf("list element %d wrong. got=%v, want=%s", i, listObj.Value[i], v)
 				}
 			}
 		case string:

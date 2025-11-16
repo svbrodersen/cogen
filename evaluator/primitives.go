@@ -16,11 +16,9 @@ func tail(s *object.List) object.Object {
 	if len(s.Value) == 0 {
 		return newError("tl called on empty list")
 	}
-	return &object.List{Value: s.Value[1:(len(s.Value) - 1)]}
+	return &object.List{Value: s.Value[1:]}
 }
 
-// code should be a Object list, and we add to the first element.
-// TODO: Causes panic atm
 func o(s1 *object.List, inputs ...object.Object) object.Object {
 	val := append(s1.Value, inputs...)
 	return &object.List{Value: val}
@@ -28,19 +26,32 @@ func o(s1 *object.List, inputs ...object.Object) object.Object {
 
 // Should create a object.List
 func list(a ...object.Object) object.Object {
-	return &object.List{Value: a}
+	aCopy := make([]object.Object, len(a))
+	copy(aCopy, a)
+
+	return &object.List{Value: aCopy}
 }
 
 func new_tail(item object.Object, Q *object.List) object.Object {
-	val := item.Inspect()
+	val := item.String()
 	val += ":"
+	searchItem := object.Symbol{Value: val}
 	i := 0
 	for _, block := range Q.Value {
 		lst, ok := block.(*object.List)
 		if !ok {
 			return newError("new_tail expects second input to be list of list, got %s", block.Type())
 		}
-		if lst.Value[0].Inspect() == val {
+		if len(lst.Value) == 0 {
+			continue
+		}
+		// We only search for symbol statements
+		s, ok := lst.Value[0].(*object.Symbol)
+		if !ok {
+			continue
+		}
+		// Check if this is the same as the searchItem
+		if *s == searchItem {
 			break
 		}
 		i++
@@ -61,11 +72,11 @@ func CallPrimitive(name string, args []object.Object) object.Object {
 		return head(input)
 	case "tl":
 		if len(args) != 1 {
-			return newError("hd takes one input, got %d", len(args))
+			return newError("tl takes one input, got %d", len(args))
 		}
 		input, ok := args[0].(*object.List)
 		if !ok {
-			return newError("hd expects list, got %s", args[0].Type())
+			return newError("tl expects list, got %s", args[0].Type())
 		}
 		return tail(input)
 	case "o":
@@ -78,9 +89,6 @@ func CallPrimitive(name string, args []object.Object) object.Object {
 		}
 		return o(item1, args[1:]...)
 	case "list":
-		if len(args) < 1 {
-			return newError("list expected atleast one input, got %d", len(args))
-		}
 		return list(args...)
 	case "new_tail":
 		if len(args) != 2 {

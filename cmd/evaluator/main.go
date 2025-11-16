@@ -51,7 +51,7 @@ func main() {
 	e := evaluator.New(parsed_program)
 	evaluated := e.Eval(parsed_program, env)
 	if evaluated != nil {
-		io.WriteString(os.Stdout, fmt.Sprintf("Result: %s\n", evaluated.Inspect()))
+		io.WriteString(os.Stdout, fmt.Sprintf("Result: %s\n", evaluated.String()))
 	} else {
 		io.WriteString(os.Stdout, "evaluated is nil\n")
 	}

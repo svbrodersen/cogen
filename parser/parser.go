@@ -293,6 +293,8 @@ func (p *Parser) parseConstantList() ast.Expression {
 			value = p.parseConstant()
 		case token.SYMBOL:
 			value = p.parseSymbolExpression()
+		case token.NUMBER:
+			value = p.parseIntegerLiteral()
 		}
 		if value == nil {
 			msg := fmt.Sprintf("list: could not parse %s of type %s", p.curToken.Literal, p.curToken.Type)
@@ -502,6 +504,7 @@ func (p *Parser) parseCallArguments() []ast.Expression {
 	p.nextToken()
 	args = append(args, p.parseExpression(LOWEST))
 	for p.peakTokenIs(token.COMMA) {
+		// Move over the current token and comma
 		p.nextToken()
 		p.nextToken()
 		args = append(args, p.parseExpression(LOWEST))
