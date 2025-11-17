@@ -1,4 +1,4 @@
-init: m := 4; n := 1; goto ack;
+init: m := 3; n := 1; goto ack;
 ack: if m = 0 goto done else next;
 next: if n = 0 goto ack0 else ack1;
 done: return n + 1;

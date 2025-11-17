@@ -24,18 +24,15 @@ func o(s1 *object.List, inputs ...object.Object) object.Object {
 	return &object.List{Value: val}
 }
 
-// Should create a object.List
 func list(a ...object.Object) object.Object {
 	aCopy := make([]object.Object, len(a))
 	copy(aCopy, a)
-
 	return &object.List{Value: aCopy}
 }
 
+// new_tail(2, '((0 if 0 goto 3) (1 right) (2 goto 0) (3 write 1)))
 func new_tail(item object.Object, Q *object.List) object.Object {
 	val := item.String()
-	val += ":"
-	searchItem := object.Symbol{Value: val}
 	i := 0
 	for _, block := range Q.Value {
 		lst, ok := block.(*object.List)
@@ -47,11 +44,12 @@ func new_tail(item object.Object, Q *object.List) object.Object {
 		}
 		// We only search for symbol statements
 		s, ok := lst.Value[0].(*object.Symbol)
-		if !ok {
-			continue
+		item := s.String()
+		if ok {
+			item = s.Value
 		}
 		// Check if this is the same as the searchItem
-		if *s == searchItem {
+		if item == val {
 			break
 		}
 		i++

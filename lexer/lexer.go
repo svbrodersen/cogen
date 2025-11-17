@@ -78,13 +78,7 @@ func (l *DefaultLexer) NextToken() token.Token {
 		if isDigit(l.ch) {
 			col := l.column
 			num := l.readNumber()
-			if isWhitespace(l.ch) || l.ch == ')' {
-				tok = newToken(l, token.NUMBER, num)
-			} else {
-				// In quoted context if the number does not have a following whitespace or closing parenthesis, then it is not a number but rather a SYMBOL expression.
-				tok = newToken(l, token.SYMBOL, num+string(l.ch))
-				l.readChar()
-			}
+			tok = newToken(l, token.NUMBER, num)
 			tok.Column = col
 			return tok
 		} else if isQuotedChar(l.ch) {
