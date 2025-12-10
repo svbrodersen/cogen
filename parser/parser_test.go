@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -397,6 +398,18 @@ func TestAckermannFunc(t *testing.T) {
 		t.Fatalf("expected (n+1), got %s", rs.ReturnValue.String())
 	}
 }
+
+func TestNestedList(t *testing.T) {
+	input := "start: Q := '((0 if 0 goto 3) (1 right) (2 goto 0) (3 write 1));"
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+
+	if strings.TrimRight(program.String(), "\n") != "start: Q := '((0 if 0 goto 3) (1 right) (2 goto 0) (3 write 1));" {
+		t.Fatalf("Expected the same input program when parsing.\n\nExpected: %s\nGot     : %s\n", input, program.String())
+	}
+}
+
 
 func checkParserErrors(p *Parser) error {
 	if len(p.Errors()) == 0 {

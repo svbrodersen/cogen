@@ -328,6 +328,64 @@ func booleanInfix(operator string, leftObj, rightObj object.Object) object.Objec
 	}
 }
 
+func listInfix(operator string, leftObj, rightObj object.Object) object.Object {
+	left := leftObj.(*object.List).Value
+	right := rightObj.(*object.List).Value
+	switch operator {
+	case "=":
+		if len(left) != len(right) {
+			return FALSE
+		}
+		initial := true
+		for i := range left {
+			initial = initial && isTruthy(evalInfixExpression(operator, left[i], right[i]))
+		}
+		if initial {
+			return TRUE
+		} else {
+			return FALSE
+		}
+	case "!=":
+		// This is just the reverse of the previous
+		if len(left) != len(right) {
+			return TRUE
+		}
+		initial := true
+		for i := range left {
+			initial = initial && isTruthy(evalInfixExpression("=", left[i], right[i]))
+		}
+		if initial {
+			return FALSE
+		} else {
+			return TRUE
+		}
+	default:
+		return newError("unknown operator: %s %s %s", leftObj.Type(), operator, rightObj.Type())
+	}
+}
+
+func symbolInfix(operator string, leftObj object.Object, rightObj object.Object) object.Object {
+	left := leftObj.(*object.Symbol).Value
+	right := rightObj.(*object.Symbol).Value
+
+	switch operator {
+	case "=":
+		if left == right {
+			return TRUE
+		}	else {
+			return FALSE
+		}
+	case "!=":
+		if left != right {
+			return TRUE
+		} else {
+			return FALSE
+		}
+	default:
+		return newError("unknown operator: %s %s %s", leftObj.Type(), operator, rightObj.String())
+	}
+}
+
 func evalInfixExpression(operator string, left object.Object, right object.Object) object.Object {
 	if left.Type() != right.Type() {
 		return newError("type mismatch: %s %s %s", left.Type(), operator, right.Type())
@@ -338,6 +396,10 @@ func evalInfixExpression(operator string, left object.Object, right object.Objec
 		return val
 	case object.BOOLEAN:
 		return booleanInfix(operator, left, right)
+	case object.LIST:
+		return listInfix(operator, left, right)
+	case object.SYMBOL:
+		return symbolInfix(operator, left, right)
 	default:
 		return newError("unknown operator: %s %s %s", left.Type(), operator, right.Type())
 	}

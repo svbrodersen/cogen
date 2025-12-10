@@ -1,5 +1,6 @@
 start: Q := '((0 if 0 goto 3) (1 right) (2 goto 0) (3 write 1));
-      goto init;
+       Right := '(1 0 0 0 0 1);
+       goto init;
 init: Qtail := Q;
       Left := '();
       goto loop;
@@ -31,4 +32,4 @@ do_if:    Symbol := hd(tl(tl(Instruction)));
 jump: Qtail := new_tail(Nextlabel, Q); 
       goto loop;
 error: return o('('syntax-error:), Instruction);
-stop: return right;
+stop: return Right;

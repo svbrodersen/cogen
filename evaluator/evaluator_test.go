@@ -4,6 +4,8 @@ import (
 	"cogen/lexer"
 	"cogen/object"
 	"cogen/parser"
+	"fmt"
+	"os"
 	"testing"
 )
 
@@ -167,6 +169,14 @@ func TestCallExpression(t *testing.T) {
 	}
 }
 
+func TestTuringMachine(t *testing.T) {
+	input, err := os.ReadFile("../turing_machine.fcl")
+	if err != nil {
+		t.Fatal("Failed to read file")
+	}
+	fmt.Printf("Result: %s\n", testEval(string(input)))
+}
+
 func TestPrimitiveCalls(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -184,7 +194,7 @@ func TestPrimitiveCalls(t *testing.T) {
 		// list
 		{"1: list(7, 8, 9);", []int64{7, 8, 9}},
 		// new_tail (simple case)
-		{"1: new_tail(2, list('(1: 1), '(2: 3)));", []string{"'(2: 3)"}},
+		{"1: new_tail(2, list('(1 1), '(2 3)));", []string{"'(2 3)"}},
 		// hd error
 		{"1: hd(list());", "hd called on empty list"},
 		// tl error

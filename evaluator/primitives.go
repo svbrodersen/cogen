@@ -2,6 +2,7 @@ package evaluator
 
 import (
 	"cogen/object"
+	"fmt"
 )
 
 func head(s *object.List) object.Object {
@@ -34,6 +35,7 @@ func list(a ...object.Object) object.Object {
 func new_tail(item object.Object, Q *object.List) object.Object {
 	val := item.String()
 	i := 0
+	fmt.Printf("new_tail: got Q: %s\n", Q.String())
 	for _, block := range Q.Value {
 		lst, ok := block.(*object.List)
 		if !ok {
@@ -43,13 +45,11 @@ func new_tail(item object.Object, Q *object.List) object.Object {
 			continue
 		}
 		// We only search for symbol statements
-		s, ok := lst.Value[0].(*object.Symbol)
-		item := s.String()
-		if ok {
-			item = s.Value
+		v, ok := lst.Value[0].(object.ValueString)
+		if !ok {
+			return newError("new_tail expects the first value of each sublist to implement the ValueString interface.")
 		}
-		// Check if this is the same as the searchItem
-		if item == val {
+		if v.GetValue() == val {
 			break
 		}
 		i++
