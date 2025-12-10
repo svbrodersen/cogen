@@ -113,6 +113,10 @@ func (e *Evaluator) evalLabel(node *ast.Label, env *object.Environment) object.O
 		}
 	}
 
+	if labelStmt == nil {
+		return newError("label not found: %s", node.Value)
+	}
+
 	evaluated := e.Eval(labelStmt, env)
 	return evaluated
 }
@@ -163,6 +167,10 @@ func (e *Evaluator) evalCallExpression(node *ast.CallExpression, env *object.Env
 			labelStmt = v
 			break
 		}
+	}
+
+	if labelStmt == nil {
+		return newError("LabelStatement not found in call expression: %s", node.Label.Value)
 	}
 
 	newEnv := object.NewEnclosedEnvironment(env)
