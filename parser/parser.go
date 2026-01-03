@@ -100,9 +100,6 @@ func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
 
 func (p *Parser) nextToken() {
 	p.curToken = p.peakToken
-	if p.curToken.Type == token.QUOTE {
-		p.l.SetQuotedContext(true)
-	}
 	p.peakToken = p.l.NextToken()
 }
 
@@ -236,13 +233,11 @@ func (p *Parser) parseConstant() ast.Expression {
 
 	switch p.peakToken.Type {
 	case token.LPAREN:
-		// We wish to parse constantList entirely with QuotedContext true
 		p.nextToken()
 		stmt.Value = p.parseConstantList(1)
 	default:
 		// We have already parsed the next token correctly, so we set QuotedContext
 		// back to false and process next
-		p.l.SetQuotedContext(false)
 		p.nextToken()
 		stmt.Value = p.parseSymbolExpression()
 	}
@@ -277,6 +272,8 @@ func (p *Parser) parseSymbolExpression() ast.Expression {
 // deferentiate between a list and a grouped expression?
 func (p *Parser) parseConstantList(depth int) ast.Expression {
 	stmt := &ast.List{Token: p.curToken}
+
+
 	// If next token is our end, then we set back quoted context to false
 	p.nextToken()
 	var values []ast.Expression
@@ -302,9 +299,6 @@ func (p *Parser) parseConstantList(depth int) ast.Expression {
 		// Move over the parsed token
 		p.nextToken()
 		values = append(values, value)
-	}
-	if depth == 1 {
-		p.l.SetQuotedContext(false)
 	}
 	stmt.Value = values
 	return stmt

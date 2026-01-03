@@ -2,7 +2,6 @@ package evaluator
 
 import (
 	"cogen/object"
-	"fmt"
 )
 
 func head(s *object.List) object.Object {
@@ -31,11 +30,19 @@ func list(a ...object.Object) object.Object {
 	return &object.List{Value: aCopy}
 }
 
+func cons(a object.Object, b object.Object) object.Object {
+	if bLst, ok := b.(*object.List); ok {
+		res := append([]object.Object{a}, bLst.Value...)
+		return &object.List{Value: res}
+	}
+	
+	return &object.List{Value: []object.Object{a, b}}
+}
+
 // new_tail(2, '((0 if 0 goto 3) (1 right) (2 goto 0) (3 write 1)))
 func new_tail(item object.Object, Q *object.List) object.Object {
 	val := item.String()
 	i := 0
-	fmt.Printf("new_tail: got Q: %s\n", Q.String())
 	for _, block := range Q.Value {
 		lst, ok := block.(*object.List)
 		if !ok {
@@ -88,6 +95,11 @@ func CallPrimitive(name string, args []object.Object) object.Object {
 		return o(item1, args[1:]...)
 	case "list":
 		return list(args...)
+	case "cons":
+		if len(args) != 2 {
+			return newError("cons takes two inputs, got %d", len(args))
+		}
+		return cons(args[0], args[1])
 	case "new_tail":
 		if len(args) != 2 {
 			return newError("new_tail takes two inputs, got %d", len(args))

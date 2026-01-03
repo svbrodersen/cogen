@@ -5,6 +5,7 @@ import (
 	"cogen/lexer"
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -408,6 +409,23 @@ func TestNestedList(t *testing.T) {
 	if strings.TrimRight(program.String(), "\n") != "start: Q := '((0 if 0 goto 3) (1 right) (2 goto 0) (3 write 1));" {
 		t.Fatalf("Expected the same input program when parsing.\n\nExpected: %s\nGot     : %s\n", input, program.String())
 	}
+}
+
+func TestTuring(t *testing.T) {
+	data, err := os.ReadFile("../turing_machine.fcl")
+	if err != nil {
+		t.Fatal("unable to read turing machine file")
+	}
+	input := string(data)
+	l := lexer.New(input)
+	p := New(l)
+	p.ParseProgram()
+
+	err = checkParserErrors(p)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
 }
 
 

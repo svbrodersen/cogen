@@ -4,35 +4,54 @@ import (
 	"cogen/token"
 )
 
+const (
+	ModeInitial = iota
+	ModeQuoted
+)
+
+type LexerState struct {
+	mode       int
+	parenDepth int
+}
+
 type Lexer interface {
 	NextToken() token.Token
 	GetLine() int
 	GetColumn() int
 	GetInput() string
-	SetQuotedContext(bool)
 }
 
 type DefaultLexer struct {
-	input         string
-	quotedContext bool
-	position      int
-	ch            byte
-	line          int
-	column        int
+	input    string
+	stack    []LexerState
+	position int
+	ch       byte
+	line     int
+	column   int
 }
 
 func (l *DefaultLexer) GetInput() string {
 	return l.input
 }
 
-func (l *DefaultLexer) SetQuotedContext(val bool) {
-	l.quotedContext = val
+func (l *DefaultLexer) pushState(mode int) {
+	l.stack = append(l.stack, LexerState{mode: mode, parenDepth: 0})
+}
+
+func (l *DefaultLexer) popState() {
+	if len(l.stack) > 1 {
+		l.stack = l.stack[:len(l.stack)-1]
+	}
+}
+
+func (l *DefaultLexer) currentState() *LexerState {
+	return &l.stack[len(l.stack)-1]
 }
 
 func New(input string) *DefaultLexer {
 	l := &DefaultLexer{input: input, line: 1, column: -1}
 	l.position = -1
-	l.quotedContext = false
+	l.stack = []LexerState{{mode: ModeInitial, parenDepth: 0}}
 	l.readChar()
 	return l
 }
@@ -74,21 +93,17 @@ func (l *DefaultLexer) NextToken() token.Token {
 	var tok token.Token
 	l.skipWhitespace()
 
-	if l.quotedContext {
-		if isDigit(l.ch) {
-			col := l.column
-			num := l.readNumber()
-			tok = newToken(l, token.NUMBER, num)
-			tok.Column = col
-			return tok
-		} else if isQuotedChar(l.ch) {
-			col := l.column
-			// read until whitespace or endline as symbol
-			literal := l.readQuoted()
-			tok = newToken(l, token.SYMBOL, literal)
-			tok.Column = col
-			return tok
-		}
+	if l.ch == '\'' {
+		l.pushState(ModeQuoted)
+		tok := newToken(l, token.QUOTE, '\'')
+		l.readChar()
+		return tok
+	}
+
+	state := l.currentState()
+
+	if state.mode == ModeQuoted {
+		return l.lexQuoted(state)
 	}
 
 	switch l.ch {
@@ -100,8 +115,6 @@ func (l *DefaultLexer) NextToken() token.Token {
 		tok = newToken(l, token.RPAREN, ')')
 	case ',':
 		tok = newToken(l, token.COMMA, ',')
-	case '\'':
-		tok = newToken(l, token.QUOTE, '\'')
 	case '=':
 		tok = newToken(l, token.EQUAL, '=')
 	case '<':
@@ -160,6 +173,42 @@ func (l *DefaultLexer) NextToken() token.Token {
 		}
 	}
 	l.readChar()
+	return tok
+}
+
+func (l *DefaultLexer) lexQuoted(state *LexerState) token.Token {
+	var tok token.Token
+
+	switch l.ch {
+	case '(':
+		state.parenDepth++
+		tok = newToken(l, token.LPAREN, '(')
+		l.readChar()
+	case ')':
+		state.parenDepth--
+		tok = newToken(l, token.RPAREN, ')')
+		l.readChar()
+		// If we closed all parens, the quoted context is over
+		if state.parenDepth <= 0 {
+			l.popState()
+		}
+	case 0: // EOF safety
+		l.popState()
+		return newToken(l, token.EOF, "")
+	default:
+		if isDigit(l.ch) {
+			tok = newToken(l, token.NUMBER, l.readNumber())
+		} else if isQuotedChar(l.ch) {
+			// Read the symbol (e.g., 'stop' or 'cont')
+			tok = newToken(l, token.SYMBOL, l.readQuoted())
+		}
+
+		// If we aren't inside a list (parenDepth 0), a single symbol
+		// ends the quoted context (e.g., 'stop )
+		if state.parenDepth == 0 {
+			l.popState()
+		}
+	}
 	return tok
 }
 
