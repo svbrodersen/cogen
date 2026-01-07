@@ -9,14 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 )
-
-func printParserErrors(out io.Writer, errors []parser.ParserError) {
-	for _, err := range errors {
-		io.WriteString(out, "\t"+err.Msg+"\n")
-	}
-}
 
 func fail(err error) {
 	if err != nil {
@@ -28,16 +21,13 @@ func fail(err error) {
 }
 
 func parseCLIArgument(arg string) object.Object {
-	if arg == "true" {
-		return evaluator.TRUE
-	}
-	if arg == "false" {
-		return evaluator.FALSE
-	}
-	if i, err := strconv.ParseInt(arg, 0, 64); err == nil {
-		return &object.Integer{Value: i}
-	}
-	return &object.Symbol{Value: arg}
+	l := lexer.New(arg)
+	p := parser.New(l)
+	parse_result := p.ParseExpression(parser.LOWEST)
+	env := object.NewEnvironment()
+	e := evaluator.Evaluator{Program: nil}
+	evaluated := e.Eval(parse_result, env)
+	return evaluated
 }
 
 func main() {

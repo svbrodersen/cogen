@@ -1,5 +1,20 @@
-start: Q := '((0 if 0 goto 3) (1 right) (2 goto 0) (3 write 1));
-       Right := '(1 1 0 1 0 1);
+start: Q := '(
+  (0 right)
+  (3 if 1 goto 31)
+  (30 if 0 goto 35)
+  (36 if 9 goto 4)
+
+  (31 write 0)
+  (32 right)
+  (33 goto 3)
+
+  (35 write 1)
+
+  (4 left)
+
+  (41 if 0 goto 4)
+);
+       Right := '(9 0 0 0 0 9);
        goto init;
 init: Qtail := Q;
       Left := '();

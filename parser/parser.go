@@ -375,7 +375,7 @@ func (p *Parser) parseIfStatement() *ast.IfStatement {
 	stmt := &ast.IfStatement{Token: p.curToken}
 	p.nextToken()
 
-	stmt.Cond = p.parseExpression(LOWEST)
+	stmt.Cond = p.ParseExpression(LOWEST)
 	p.nextToken()
 
 	// Skip over goto, if it is there
@@ -410,7 +410,7 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	stmt := &ast.ReturnStatement{Token: p.curToken}
 	p.nextToken()
 
-	stmt.ReturnValue = p.parseExpression(LOWEST)
+	stmt.ReturnValue = p.ParseExpression(LOWEST)
 	p.nextToken()
 	return stmt
 }
@@ -435,7 +435,7 @@ func (p *Parser) parseAssignmentStatement() *ast.AssignmentStatement {
 	if p.curToken.Type == token.CALL {
 		stmt.Right = p.parseCall()
 	} else {
-		stmt.Right = p.parseExpression(LOWEST)
+		stmt.Right = p.ParseExpression(LOWEST)
 	}
 	p.nextToken()
 
@@ -445,12 +445,12 @@ func (p *Parser) parseAssignmentStatement() *ast.AssignmentStatement {
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	stmt := &ast.ExpressionStatement{Token: p.curToken}
 
-	stmt.Expression = p.parseExpression(LOWEST)
+	stmt.Expression = p.ParseExpression(LOWEST)
 	p.nextToken()
 	return stmt
 }
 
-func (p *Parser) parseExpression(precedence int) ast.Expression {
+func (p *Parser) ParseExpression(precedence int) ast.Expression {
 	// First attempt to parse ValuepExpression. Otherwise parse prefix
 	var leftExp ast.Expression
 
@@ -477,7 +477,7 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 		Operator: p.curToken.Literal,
 	}
 	p.nextToken()
-	expression.Right = p.parseExpression(PREFIX)
+	expression.Right = p.ParseExpression(PREFIX)
 	return expression
 }
 
@@ -494,12 +494,12 @@ func (p *Parser) parseCallArguments() []ast.Expression {
 		return args
 	}
 	p.nextToken()
-	args = append(args, p.parseExpression(LOWEST))
+	args = append(args, p.ParseExpression(LOWEST))
 	for p.peakTokenIs(token.COMMA) {
 		// Move over the current token and comma
 		p.nextToken()
 		p.nextToken()
-		args = append(args, p.parseExpression(LOWEST))
+		args = append(args, p.ParseExpression(LOWEST))
 	}
 	if !p.requirePeak(token.RPAREN) {
 		return nil
@@ -516,13 +516,13 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 
 	precedence := p.curPrecedence()
 	p.nextToken()
-	expression.Right = p.parseExpression(precedence)
+	expression.Right = p.ParseExpression(precedence)
 	return expression
 }
 
 func (p *Parser) parseGroupedExpression() ast.Expression {
 	p.nextToken()
-	exp := p.parseExpression(LOWEST)
+	exp := p.ParseExpression(LOWEST)
 
 	if !p.requirePeak(token.RPAREN) {
 		return nil
