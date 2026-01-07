@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 )
 
 func printParserErrors(out io.Writer, errors []parser.ParserError) {
@@ -24,6 +25,19 @@ func fail(err error) {
 	fmt.Fprintf(os.Stderr, "usage: %s [inputfile] [delta]", os.Args[0])
 	flag.PrintDefaults()
 	os.Exit(2)
+}
+
+func parseCLIArgument(arg string) object.Object {
+	if arg == "true" {
+		return evaluator.TRUE
+	}
+	if arg == "false" {
+		return evaluator.FALSE
+	}
+	if i, err := strconv.ParseInt(arg, 0, 64); err == nil {
+		return &object.Integer{Value: i}
+	}
+	return &object.Symbol{Value: arg}
 }
 
 func main() {
@@ -48,6 +62,21 @@ func main() {
 		io.WriteString(os.Stdout, p.GetErrorMessage())
 		return
 	}
+
+	if len(parsed_program.Variables) > 0 {
+		expectedArgs := len(parsed_program.Variables)
+		if len(os.Args) < 2+expectedArgs {
+			fmt.Fprintf(os.Stderr, "Program expects %d arguments, got %d\n", expectedArgs, len(os.Args)-2)
+			os.Exit(1)
+		}
+
+		for i, input := range parsed_program.Variables {
+			arg := os.Args[2+i]
+			val := parseCLIArgument(arg)
+			env.Set(input.Ident.Value, val)
+		}
+	}
+
 	e := evaluator.New(parsed_program)
 	evaluated := e.Eval(parsed_program, env)
 	if evaluated != nil {

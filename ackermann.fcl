@@ -1,4 +1,4 @@
-init: m := 3; n := 1; goto ack;
+ackerman(m, n):
 ack: if m = 0 goto done else next;
 next: if n = 0 goto ack0 else ack1;
 done: return n + 1;
