@@ -117,7 +117,11 @@ func newHeader(name_obj object.Object, dynVars ...object.Object) object.Object {
 func newBlock(code_obj object.Object, name_obj object.Object) object.Object {
 	code, ok := code_obj.(*object.List)
 	if !ok {
-		return newError("newBlock expects first argument (code) to be a list, got %s", code_obj.Type())
+		return newError("newBlock expects first argument (code) to be a list of list, got %s", code_obj.Type())
+	}
+	inner_code, ok := code_obj.(*object.List)
+	if !ok {
+		return newError("newBlock expects first argument (code) to be a list of list, got %s", code_obj.Type())
 	}
 
 	name_list, ok := name_obj.(*object.List)
@@ -125,7 +129,7 @@ func newBlock(code_obj object.Object, name_obj object.Object) object.Object {
 		return newError("newBlock expects second argument to be a list, got %s", name_list.Type())
 	}
 
-	var name string
+	name := ""
 	for i, subName := range name_list.Value {
 		if i == len(name_list.Value)-1 {
 			name += subName.String()
@@ -140,7 +144,7 @@ func newBlock(code_obj object.Object, name_obj object.Object) object.Object {
 		Value: []object.Object{&sym},
 	}
 
-	code.Value = append(code.Value, &lst)
+	inner_code.Value = append(inner_code.Value, &lst)
 	return code
 }
 
@@ -150,14 +154,31 @@ func isDone(name_obj object.Object, code_obj object.Object) object.Object {
 		return newError("is_done expects second argument (code) to be a list, got %s", code_obj.Type())
 	}
 
+	names, ok := name_obj.(*object.List)
+	if !ok {
+		return newError("is_done expects first argument to be a list, got %s", code_obj.Type())
+	}
+
+	name := ""
+	for i, n := range names.Value {
+		if i == len(names.Value)-1 {
+			name += n.String()
+		} else {
+			name += n.String() + "-"
+		}
+	}
+
 	for i, block := range code.Value {
 		// Skip over header
 		if i == 0 {
 			continue
 		}
 
-		l := head(block)
-		if name_obj.String() == l.String() {
+		l, ok := head(block).(*object.Symbol)
+		if !ok {
+			continue
+		}
+		if name == l.Value {
 			return TRUE
 		}
 	}
