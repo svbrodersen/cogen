@@ -156,16 +156,36 @@ func (l *DefaultLexer) NextToken() token.Token {
 	case 0:
 		tok = newToken(l, token.EOF, "")
 	default:
+		col := l.column
 		if isLetter(l.ch) {
-			col := l.column
 			literal := l.readIdentifier()
 			tok = newToken(l, token.LookupIdent(literal), literal)
 			tok.Column = col
 			return tok
 		} else if isDigit(l.ch) {
-			col := l.column
-			num := l.readNumber()
-			tok = newToken(l, token.NUMBER, num)
+			position := l.position
+			for isDigit(l.ch) {
+				l.readChar()
+			}
+
+			// CHECK: Did we stop because of a letter or hyphen?
+			// If so, this is a Mixed Identifier (e.g. "1-ack"), not a Number.
+			if isLetter(l.ch) {
+				// Continue reading as an identifier
+				for isLetter(l.ch) || isDigit(l.ch) {
+					l.readChar()
+				}
+
+				// Return as IDENT
+				literal := l.input[position:l.position]
+				tok = newToken(l, token.LookupIdent(literal), literal)
+				tok.Column = col
+				return tok
+			}
+
+			// Otherwise, it really is just a Number
+			literal := l.input[position:l.position]
+			tok = newToken(l, token.NUMBER, literal)
 			tok.Column = col
 			return tok
 		} else {

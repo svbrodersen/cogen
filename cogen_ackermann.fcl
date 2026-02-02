@@ -1,0 +1,44 @@
+ackerman(m):
+0_ack_m: code := newHeader(list('ackerman, m), 'n);
+        goto 1_ack_m;
+2_ackerman: return code;
+
+1_ack_m: if isDone(list('ack, m), code) 2_ackerman else 3_ack_m;
+3_ack_m: code := newBlock(code, list('ack, m));
+        goto 4_ack_m;
+4_ack_m: if (m = 0) 4_done_m else 4_next_m;
+4_done_m: return o(code, list('return, list('n, '+, 1)));
+4_next_m: code := call 1_ack0_m;
+        code := call 1_ack1_m;
+        return o(code, list('if, list('n, '=, 0), list('ack0, m), list('ack1, m)));
+
+1_ack0_m: if isDone(list('ack0, m), code) 2_ackerman else 3_ack0_m;
+3_ack0_m: code := newBlock(code, list('ack0, m));
+        goto 4_ack0_m;
+4_ack0_m: n := 1;
+        m := (m - 1);
+        n := call 5_ack_m_n;
+        return o(code, list('return, list('quote, n)));
+
+1_ack1_m: if isDone(list('ack1, m), code) 2_ackerman else 3_ack1_m;
+3_ack1_m: code := newBlock(code, list('ack1, m));
+        goto 4_ack1_m;
+4_ack1_m: code := o(code, list('n, ':=, list('n, '-, 1)));
+        code := call 1_ack_m;
+        code := o(code, list('n, ':=, list('call, list('ack, m))));
+        m := (m - 1);
+        code := call 1_ack_m;
+        code := o(code, list('n, ':=, list('call, list('ack, m))));
+        return o(code, list('return, 'n));
+
+5_ack_m_n: if (m = 0) 5_done_m_n else 5_next_m_n;
+5_done_m_n: return (n + 1);
+5_next_m_n: if (n = 0) 5_ack0_m_n else 5_ack1_m_n;
+5_ack0_m_n: n := 1;
+        goto 5_ack2_m_n;
+5_ack1_m_n: n := (n - 1);
+        n := call 5_ack_m_n;
+        goto 5_ack2_m_n;
+5_ack2_m_n: m := (m - 1);
+        n := call 5_ack_m_n;
+        return n;

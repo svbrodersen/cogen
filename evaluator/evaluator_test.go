@@ -178,11 +178,14 @@ func TestTuringMachine(t *testing.T) {
 }
 
 func TestCogenAckermann(t *testing.T) {
-	input, err := os.ReadFile("../cogen_acermann.fcl")
+	input, err := os.ReadFile("../cogen_ackermann.fcl")
 	if err != nil {
 		t.Fatal("Failed to read file")
 	}
-	fmt.Printf("Result: %s\n", testEval(string(input)))
+	env := object.NewEnvironment()
+	env.Set("m", &object.Integer{Value: 2})
+	res := testEvalWithEnv(string(input), env)
+	fmt.Printf("Result: %s\n", res)
 }
 
 func TestPrimitiveCalls(t *testing.T) {
@@ -260,6 +263,15 @@ func TestPrimitiveCalls(t *testing.T) {
 			}
 		}
 	}
+}
+
+func testEvalWithEnv(input string, env *object.Environment) object.Object {
+	l := lexer.New(input)
+	p := parser.New(l)
+
+	program := p.ParseProgram()
+	evaluator := New(program)
+	return evaluator.Eval(program, env)
 }
 
 func testEval(input string) object.Object {

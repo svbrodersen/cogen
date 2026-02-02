@@ -85,7 +85,7 @@ func newHeader(name_obj object.Object, dynVars ...object.Object) object.Object {
 	if !ok {
 		return newError("newHeader expects first argument to be a list, got %s", name_obj.Type())
 	}
-	header := object.List{
+	innerList := object.List{
 		Value: []object.Object{},
 	}
 
@@ -100,10 +100,16 @@ func newHeader(name_obj object.Object, dynVars ...object.Object) object.Object {
 	sym := object.Symbol{
 		Value: name,
 	}
-	header.Value = append(header.Value, &sym)
+	innerList.Value = append(innerList.Value, &sym)
 
 	for _, variable := range dynVars {
-		header.Value = append(header.Value, variable)
+		innerList.Value = append(innerList.Value, variable)
+	}
+
+	header := object.List{
+		Value: []object.Object{
+			&innerList,
+		},
 	}
 	return &header
 }

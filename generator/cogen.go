@@ -87,7 +87,6 @@ func (c *Cogen) dynamicVariables() []ast.Expression {
 }
 
 func (c *Cogen) processHeader() {
-
 	dynVars := c.dynamicVariables()
 	dynamicVars := make([]ast.Expression, len(dynVars))
 	for i := range dynVars {
@@ -129,7 +128,7 @@ func (c *Cogen) processHeader() {
 
 	ltoken := token.Token{
 		Type:    token.LABEL,
-		Literal: "2",
+		Literal: "2_" + c.OriginalProgram.Name,
 	}
 	twoLabel := &ast.LabelStatement{
 		Token: ltoken,
@@ -286,6 +285,11 @@ func (c *Cogen) processPoly(stmt *ast.LabelStatement) *ast.LabelStatement {
 	// Otherwise we must be able to fill this new LabelStatement
 	upliftL := c.labelUplift(stmt.Label.Value)
 
+	// Process block given delta
+	curState := c.saveState()
+	c.processBlock(stmt)
+	c.state = curState
+
 	l3 := c.newLabel(3, stmt.Label.Value)
 	l4 := c.newLabel(4, stmt.Label.Value)
 	doneFunc := newIdentifier("isDone")
@@ -299,8 +303,8 @@ func (c *Cogen) processPoly(stmt *ast.LabelStatement) *ast.LabelStatement {
 				Arguments: []ast.Expression{upliftL, code},
 			},
 			LabelTrue: ast.Label{
-				Token: newToken(token.IDENT, "2"),
-				Value: "2",
+				Token: newToken(token.IDENT, "2_"+c.OriginalProgram.Name),
+				Value: "2_" + c.OriginalProgram.Name,
 			},
 			LabelFalse: l3.Label,
 		},
@@ -326,7 +330,6 @@ func (c *Cogen) processPoly(stmt *ast.LabelStatement) *ast.LabelStatement {
 		},
 	}
 	c.state.extension.Statements = append(c.state.extension.Statements, l1, l3)
-	c.processBlock(stmt)
 	return l1
 }
 
@@ -390,6 +393,24 @@ func (c *Cogen) copyBlock(stmt *ast.LabelStatement) *ast.Label {
 			}
 			newStmt.Statements[i] = &gotoStmt
 
+		case *ast.AssignmentStatement:
+			prevCallExp, ok := v.Right.(*ast.CallExpression)
+			if !ok {
+				newStmt.Statements[i] = v
+				continue
+			}
+			callExp := ast.CallExpression{
+				Token: prevCallExp.Token,
+				Label: *c.copyBlocks(&prevCallExp.Label),
+			}
+
+			assignStmt := ast.AssignmentStatement{
+				Left:  v.Left,
+				Token: v.Token,
+				Right: &callExp,
+			}
+			newStmt.Statements[i] = &assignStmt
+
 		default:
 			newStmt.Statements[i] = v
 		}
@@ -450,21 +471,131 @@ func (c *Cogen) processRegularAssginment(stmt *ast.AssignmentStatement) {
 	}
 }
 
+func UniqueBy[T any, K comparable](input []T, keySelector func(T) K) []T {
+	seen := make(map[K]struct{})
+	result := make([]T, 0, len(input)) // Pre-allocate capacity for efficiency
+
+	for _, item := range input {
+		key := keySelector(item)
+		// If the key is not in the map, it's unique
+		if _, ok := seen[key]; !ok {
+			seen[key] = struct{}{} // Mark as seen
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
+func uniqueLiterals(idens []*ast.Identifier) []*ast.Identifier {
+	return UniqueBy(idens, func(i *ast.Identifier) string {
+		return i.Token.Literal
+	})
+}
+
+func (c *Cogen) live(exp ast.Node) []*ast.Identifier {
+	// 1. Initialize the visited map to prevent infinite recursion
+	visited := make(map[string]struct{})
+
+	// 2. Call the recursive helper
+	return uniqueLiterals(c.liveRecursive(exp, []*ast.Identifier{}, visited))
+}
+
+// liveRecursive carries the 'visited' state to track control flow cycles
+func (c *Cogen) liveRecursive(exp ast.Node, cur_live []*ast.Identifier, visited map[string]struct{}) []*ast.Identifier {
+	if exp == nil {
+		return cur_live
+	}
+
+	switch node := exp.(type) {
+
+	case *ast.Identifier:
+		return append(cur_live, node)
+	case *ast.IntegerLiteral, *ast.BooleanLiteral, *ast.SymbolExpression:
+		return cur_live
+
+	case *ast.PrefixExpression:
+		return c.liveRecursive(node.Right, cur_live, visited)
+
+	case *ast.InfixExpression:
+		tmp := c.liveRecursive(node.Left, cur_live, visited)
+		return c.liveRecursive(node.Right, tmp, visited)
+
+	case *ast.PrimitiveCall:
+		tmp := c.liveRecursive(node.Primitive, cur_live, visited)
+		for _, arg := range node.Arguments {
+			tmp = c.liveRecursive(arg, tmp, visited)
+		}
+		return tmp
+
+	case *ast.List:
+		tmp := cur_live
+		for _, expr := range node.Value {
+			tmp = c.liveRecursive(expr, tmp, visited)
+		}
+		return tmp
+
+	case *ast.Constant:
+		return c.liveRecursive(node.Value, cur_live, visited)
+
+	case *ast.ExpressionStatement:
+		return c.liveRecursive(node.Expression, cur_live, visited)
+
+	case *ast.AssignmentStatement:
+		return c.liveRecursive(node.Right, cur_live, visited)
+
+	case *ast.ReturnStatement:
+		return c.liveRecursive(node.ReturnValue, cur_live, visited)
+
+	case *ast.LabelStatement:
+		tmp := cur_live
+		for _, stmt := range node.Statements {
+			tmp = c.liveRecursive(stmt, tmp, visited)
+		}
+		return tmp
+
+	case *ast.GotoStatement:
+		return c.liveRecursive(&node.Label, cur_live, visited)
+
+	case *ast.CallExpression:
+		return c.liveRecursive(&node.Label, cur_live, visited)
+
+	case *ast.IfStatement:
+		tmp := c.liveRecursive(node.Cond, cur_live, visited)
+		tmp = c.liveRecursive(&node.LabelTrue, tmp, visited)
+		return c.liveRecursive(&node.LabelFalse, tmp, visited)
+
+	case *ast.Label:
+		if _, seen := visited[node.Value]; seen {
+			return cur_live
+		}
+
+		visited[node.Value] = struct{}{}
+
+		targetBlock, err := c.getOrigLabelStatement(node)
+		if err != nil {
+			return cur_live
+		}
+		return c.liveRecursive(targetBlock, cur_live, visited)
+	}
+
+	return cur_live
+}
+
+// TODO: This function has incorrect delta when handling ackermann specifically ack1
 func (c *Cogen) processCallAssginment(
 	stmt *ast.AssignmentStatement,
 	callExp *ast.CallExpression,
 ) {
 	// live exp
-	if c.isSubsetDelta(callExp.Variables) {
+	if c.isSubsetDelta(c.live(callExp)) {
 		leftCpy := *stmt.Left
 		c.addStatement(
 			&ast.AssignmentStatement{
 				Left:  &leftCpy,
 				Token: stmt.Token,
 				Right: &ast.CallExpression{
-					Token:     newToken(token.CALL, "call"),
-					Label:     *c.copyBlocks(&callExp.Label),
-					Variables: []*ast.Identifier{},
+					Token: newToken(token.CALL, "call"),
+					Label: *c.copyBlocks(&callExp.Label),
 				},
 			},
 		)
@@ -484,9 +615,8 @@ func (c *Cogen) processCallAssginment(
 		l1 := c.newLabel(1, callExp.Label.Value)
 		c.addStatement(
 			codeAssign(&ast.CallExpression{
-				Token:     newToken(token.CALL, "call"),
-				Label:     l1.Label,
-				Variables: []*ast.Identifier{},
+				Token: newToken(token.CALL, "call"),
+				Label: l1.Label,
 			}))
 		code := newIdentifier("code")
 		o := newIdentifier("o")
@@ -542,6 +672,7 @@ func (c *Cogen) getCurLabelStatement(stmt *ast.Label) (*ast.LabelStatement, erro
 }
 
 func (c *Cogen) processIf(stmt *ast.IfStatement) {
+	fmt.Println(stmt.String())
 	variables := getVars(stmt.Cond)
 	if c.isSubsetDelta(variables) {
 		newStmt := &ast.IfStatement{
@@ -598,8 +729,7 @@ func (c *Cogen) processIf(stmt *ast.IfStatement) {
 					Type:    token.CALL,
 					Literal: "call",
 				},
-				Variables: []*ast.Identifier{},
-				Label:     l1.Label,
+				Label: l1.Label,
 			}))
 
 		c.addStatement(
@@ -608,8 +738,7 @@ func (c *Cogen) processIf(stmt *ast.IfStatement) {
 					Type:    token.CALL,
 					Literal: "call",
 				},
-				Label:     l2.Label,
-				Variables: []*ast.Identifier{},
+				Label: l2.Label,
 			}))
 
 		o := newIdentifier("o")
@@ -686,7 +815,7 @@ func (c *Cogen) removeDelta(item *ast.Identifier) {
 }
 
 func (c *Cogen) newLabel(num int, label string) *ast.LabelStatement {
-	l := strconv.Itoa(num) + "-" + label
+	l := strconv.Itoa(num) + "_" + label
 	items := make([]string, 0, len(c.state.delta))
 	for item := range c.state.delta {
 		items = append(items, item)
@@ -694,7 +823,7 @@ func (c *Cogen) newLabel(num int, label string) *ast.LabelStatement {
 	// We have to sort to not duplicate after add and delete
 	sort.Strings(items)
 	for _, item := range items {
-		l = l + "-" + item
+		l = l + "_" + item
 	}
 
 	token := token.Token{Type: token.LABEL, Literal: l}
@@ -784,7 +913,8 @@ func underlineIf(e ast.Expression,
 		l1,
 		l2,
 	}
-	return newPrimitive(newIdentifier("list"), arguments)
+	res := newPrimitive(newIdentifier("list"), arguments)
+	return res
 }
 
 func underlineReturn(e ast.Expression) ast.Expression {

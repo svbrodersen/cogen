@@ -218,7 +218,7 @@ func (e *Evaluator) evalPrimitiveCall(node *ast.PrimitiveCall, env *object.Envir
 func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
 	val, ok := env.Get(node.Value)
 	if !ok {
-		return newError("identifier not found: %s", node.Value)
+		return newError("identifier not found: %s at %d:%d", node.Value, node.Token.Line, node.Token.Column)
 	}
 	return val
 }

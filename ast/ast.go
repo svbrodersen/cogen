@@ -79,7 +79,6 @@ type Identifier struct {
 type CallExpression struct {
 	Token     token.Token // call
 	Label     Label
-	Variables []*Identifier
 }
 
 type IntegerLiteral struct {
@@ -221,9 +220,6 @@ func (ce *CallExpression) String() string {
 
 	out.WriteString(ce.TokenLiteral() + " ")
 	out.WriteString(ce.Label.String())
-	for _, ident := range ce.Variables {
-		out.WriteString(" " + ident.String())
-	}
 	return out.String()
 }
 
