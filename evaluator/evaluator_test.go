@@ -177,6 +177,14 @@ func TestTuringMachine(t *testing.T) {
 	fmt.Printf("Result: %s\n", testEval(string(input)))
 }
 
+func TestCogenAckermann(t *testing.T) {
+	input, err := os.ReadFile("../cogen_acermann.fcl")
+	if err != nil {
+		t.Fatal("Failed to read file")
+	}
+	fmt.Printf("Result: %s\n", testEval(string(input)))
+}
+
 func TestPrimitiveCalls(t *testing.T) {
 	tests := []struct {
 		input    string

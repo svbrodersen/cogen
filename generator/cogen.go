@@ -87,14 +87,23 @@ func (c *Cogen) dynamicVariables() []ast.Expression {
 }
 
 func (c *Cogen) processHeader() {
-	dynamicVar := c.dynamicVariables()
+
+	dynVars := c.dynamicVariables()
+	dynamicVars := make([]ast.Expression, len(dynVars))
+	for i := range dynVars {
+		dynamicVars[i] = &ast.Constant{
+			Token: newToken(token.CONSTANT, "'"),
+			Value: newSymbol(dynVars[i].String()),
+		}
+	}
+	c.dynamicVariables()
 	upliftL := c.labelUplift(c.OriginalProgram.Name)
 	initialLabel := c.OriginalProgram.Statements[0].Label
 
 	initLabel := c.newLabel(0, initialLabel.Value)
 	gotoLabel := c.newLabel(1, initialLabel.Value)
 	codeIdentifier := newIdentifier("code")
-	newHeader := newIdentifier("newheader")
+	newHeader := newIdentifier("newHeader")
 
 	initLabel.Statements = []ast.Statement{
 		&ast.AssignmentStatement{
@@ -106,7 +115,7 @@ func (c *Cogen) processHeader() {
 			Right: &ast.PrimitiveCall{
 				Token:     newHeader.Token,
 				Primitive: newHeader,
-				Arguments: append(dynamicVar, upliftL),
+				Arguments: append([]ast.Expression{upliftL}, dynamicVars...),
 			},
 		},
 		&ast.GotoStatement{
@@ -279,7 +288,7 @@ func (c *Cogen) processPoly(stmt *ast.LabelStatement) *ast.LabelStatement {
 
 	l3 := c.newLabel(3, stmt.Label.Value)
 	l4 := c.newLabel(4, stmt.Label.Value)
-	doneFunc := newIdentifier("is_done")
+	doneFunc := newIdentifier("isDone")
 	code := newIdentifier("code")
 	l1.Statements = []ast.Statement{
 		&ast.IfStatement{
@@ -297,7 +306,7 @@ func (c *Cogen) processPoly(stmt *ast.LabelStatement) *ast.LabelStatement {
 		},
 	}
 
-	newblock := newIdentifier("newblock")
+	newblock := newIdentifier("newBlock")
 	l3.Statements = []ast.Statement{
 		&ast.AssignmentStatement{
 			Left:  newIdentifier("code"),

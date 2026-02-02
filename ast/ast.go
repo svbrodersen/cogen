@@ -144,7 +144,7 @@ func (p *Program) String() string {
 		}
 		out.WriteString("(")
 		out.WriteString(strings.Join(args, ", "))
-		out.WriteString(");\n")
+		out.WriteString("):\n")
 	}
 	for _, s := range p.Statements {
 		out.WriteString(s.String())
