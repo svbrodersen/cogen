@@ -581,7 +581,6 @@ func (c *Cogen) liveRecursive(exp ast.Node, cur_live []*ast.Identifier, visited 
 	return cur_live
 }
 
-// TODO: This function has incorrect delta when handling ackermann specifically ack1
 func (c *Cogen) processCallAssginment(
 	stmt *ast.AssignmentStatement,
 	callExp *ast.CallExpression,

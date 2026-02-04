@@ -32,8 +32,14 @@ func o(s1_obj object.Object, inputs ...object.Object) object.Object {
 	if !ok {
 		return newError("o expected first argument to be list, got %s", s1_obj.Type())
 	}
-	val := append(s1.Value, inputs...)
-	return &object.List{Value: val}
+	s2, ok := s1.Value[len(s1.Value) - 1].(*object.List)
+	if !ok {
+		return newError("o expected first argument to be list of lists, got %s", s2.Type())
+	}
+
+	s2.Value = append(s2.Value, inputs...)
+
+	return s1
 }
 
 func list(a ...object.Object) object.Object {
@@ -119,10 +125,6 @@ func newBlock(code_obj object.Object, name_obj object.Object) object.Object {
 	if !ok {
 		return newError("newBlock expects first argument (code) to be a list of list, got %s", code_obj.Type())
 	}
-	inner_code, ok := code_obj.(*object.List)
-	if !ok {
-		return newError("newBlock expects first argument (code) to be a list of list, got %s", code_obj.Type())
-	}
 
 	name_list, ok := name_obj.(*object.List)
 	if !ok {
@@ -137,6 +139,7 @@ func newBlock(code_obj object.Object, name_obj object.Object) object.Object {
 			name += subName.String() + "-"
 		}
 	}
+
 	sym := object.Symbol{
 		Value: name,
 	}
@@ -144,7 +147,7 @@ func newBlock(code_obj object.Object, name_obj object.Object) object.Object {
 		Value: []object.Object{&sym},
 	}
 
-	inner_code.Value = append(inner_code.Value, &lst)
+	code.Value = append(code.Value, &lst)
 	return code
 }
 

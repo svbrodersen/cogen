@@ -188,6 +188,7 @@ func TestCogenAckermann(t *testing.T) {
 	fmt.Printf("Result: %s\n", res)
 }
 
+
 func TestPrimitiveCalls(t *testing.T) {
 	tests := []struct {
 		input    string
