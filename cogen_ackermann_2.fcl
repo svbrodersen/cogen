@@ -1,0 +1,14 @@
+ackerman_2(n):
+ack_2: if (n = 0) ack0_2 else ack1_2;
+ack0_2: return '3;
+ack0_1: return '2;
+ack_0: return (n + 1);
+ack1_1: n := (n - 1);
+        n := call ack_1;
+        n := call ack_0;
+        return n;
+ack_1: if (n = 0) ack0_1 else ack1_1;
+ack1_2: n := (n - 1);
+        n := call ack_2;
+        n := call ack_1;
+        return n;

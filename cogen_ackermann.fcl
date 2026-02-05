@@ -1,4 +1,6 @@
 ackerman(m):
+init: code := call 0_ack_m;
+      return cleanOutput(code);
 0_ack_m: code := newHeader(list('ackerman, m), 'n);
         goto 1_ack_m;
 2_ackerman: return code;

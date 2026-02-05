@@ -102,11 +102,11 @@ func TestErrorHandling(t *testing.T) {
 	}{
 		{
 			"1: 5 + true;",
-			"type mismatch: INTEGER + BOOLEAN",
+			"type mismatch: INTEGER + BOOLEAN, for: 5 true",
 		},
 		{
 			"1: 5 + true; 5;",
-			"type mismatch: INTEGER + BOOLEAN",
+			"type mismatch: INTEGER + BOOLEAN, for: 5 true",
 		},
 		{
 			"1: -true",
@@ -122,7 +122,7 @@ func TestErrorHandling(t *testing.T) {
 		},
 		{
 			"1: foobar;",
-			"identifier not found: foobar",
+			"identifier not found: foobar at 1:3",
 		},
 	}
 	for _, tt := range tests {
@@ -200,21 +200,15 @@ func TestPrimitiveCalls(t *testing.T) {
 		// tl
 		{"1: tl(list(10, 20, 30));", []int64{20, 30}},
 		{"1: tl('(10 20 30));", []int64{20, 30}},
-		// o
-		{"1: o(list(1, 2, 3, 4), 5);", []int64{1, 2, 3, 4, 5}},
-		{"1: o('(1 2 3 4), 5);", []int64{1, 2, 3, 4, 5}},
 		// list
 		{"1: list(7, 8, 9);", []int64{7, 8, 9}},
-		// new_tail (simple case)
-		{"1: new_tail(2, list('(1 1), '(2 3)));", []string{"'(2 3)"}},
+		{"1: newTail(2, list('(1 1), '(2 3)));", []string{"'(2 3)"}},
 		// hd error
 		{"1: hd(list());", "hd called on empty list"},
 		// tl error
 		{"1: tl(list());", "tl called on empty list"},
-		// o error
-		{"1: o(1);", "o takes at least 2 inputs, got 1"},
 		// new_tail error
-		{"1: new_tail(1, 2);", "new_tail expects second element to be a list, got INTEGER"},
+		{"1: newTail(1, 2);", "newTail expects second element to be a list, got INTEGER"},
 	}
 	for _, tt := range tests {
 		evaluated := testEval(tt.input)

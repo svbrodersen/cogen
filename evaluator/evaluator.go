@@ -396,7 +396,7 @@ func symbolInfix(operator string, leftObj object.Object, rightObj object.Object)
 
 func evalInfixExpression(operator string, left object.Object, right object.Object) object.Object {
 	if left.Type() != right.Type() {
-		return newError("type mismatch: %s %s %s", left.Type(), operator, right.Type())
+		return newError("type mismatch: %s %s %s, for: %s %s", left.Type(), operator, right.Type(), left, right)
 	}
 	switch left.Type() {
 	case object.INTEGER:

@@ -227,19 +227,20 @@ func (p *Parser) parseFunctionHeader() (string, []ast.Input) {
 }
 
 func (p *Parser) parseConstant() ast.Expression {
-	stmt := &ast.Constant{Token: p.curToken}
+    stmt := &ast.Constant{Token: p.curToken}
 
-	switch p.peakToken.Type {
-	case token.LPAREN:
-		p.nextToken()
-		stmt.Value = p.parseConstantList(1)
-	default:
-		// We have already parsed the next token correctly, so we set QuotedContext
-		// back to false and process next
-		p.nextToken()
-		stmt.Value = p.parseSymbolExpression()
-	}
-	return stmt
+    switch p.peakToken.Type {
+    case token.LPAREN:
+        p.nextToken()
+        stmt.Value = p.parseConstantList(1)
+    case token.NUMBER:
+        p.nextToken()
+        stmt.Value = p.parseIntegerLiteral()
+    default:
+        p.nextToken()
+        stmt.Value = p.parseSymbolExpression()
+    }
+    return stmt
 }
 
 func (p *Parser) parseString() ast.Expression {
