@@ -49,7 +49,7 @@ func ConvertSExprToAST(input []object.Object) (*ast.Program, error) {
 	}
 
 	// 2. Parse Label Statements: ('ack0-2 (return ('3)))
-	for i := 1; i < len(root); i++ {
+	for i := len(root)-1; i > 0; i-- {
 		labelBlockObj, ok := root[i].(*object.List)
 		if !ok {
 			continue
