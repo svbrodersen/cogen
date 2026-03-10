@@ -326,7 +326,7 @@ func (c *Cogen) processBlock(stmt *ast.LabelStatement) *ast.LabelStatement {
 	c.state.extension.Statements = append(c.state.extension.Statements, l)
 	c.state.curStatement = l
 	c.processBody(stmt.Statements)
-	return c.state.curStatement
+	return l
 }
 
 func (c *Cogen) processPoly(stmt *ast.LabelStatement) *ast.LabelStatement {
