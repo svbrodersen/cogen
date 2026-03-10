@@ -213,6 +213,16 @@ func (p *Parser) parseFunctionHeader() (string, []ast.Input) {
 	name = p.curToken.Literal
 	p.nextToken()
 	// now on (
+	// Skip empty params case: if next token is ), there are no parameters
+	if p.curTokenIs(token.RPAREN) || p.peakTokenIs(token.RPAREN) {
+		p.nextToken() // eat ) - now on : or ;
+		// Skip the header terminator (: or ;)
+		if p.peakTokenIs(token.COLON) || p.peakTokenIs(token.SEMICOLON) {
+			p.nextToken() // now on :
+			p.nextToken() // now on first token after header
+		}
+		return name, variables
+	}
 	for !p.curTokenIs(token.RPAREN) && !p.curTokenIs(token.EOF) {
 		p.nextToken()
 		variables = append(variables, ast.Input{Ident: p.requireIdentifier(), Value: ""})
@@ -221,26 +231,28 @@ func (p *Parser) parseFunctionHeader() (string, []ast.Input) {
 	// eat )
 	p.nextToken()
 
-	// In the case we reach here eat ; too
-	p.nextToken()
+	// In the case we reach here eat ; or : too (header terminator)
+	if p.curTokenIs(token.SEMICOLON) || p.curTokenIs(token.COLON) {
+		p.nextToken()
+	}
 	return name, variables
 }
 
 func (p *Parser) parseConstant() ast.Expression {
-    stmt := &ast.Constant{Token: p.curToken}
+	stmt := &ast.Constant{Token: p.curToken}
 
-    switch p.peakToken.Type {
-    case token.LPAREN:
-        p.nextToken()
-        stmt.Value = p.parseConstantList(1)
-    case token.NUMBER:
-        p.nextToken()
-        stmt.Value = p.parseIntegerLiteral()
-    default:
-        p.nextToken()
-        stmt.Value = p.parseSymbolExpression()
-    }
-    return stmt
+	switch p.peakToken.Type {
+	case token.LPAREN:
+		p.nextToken()
+		stmt.Value = p.parseConstantList(1)
+	case token.NUMBER:
+		p.nextToken()
+		stmt.Value = p.parseIntegerLiteral()
+	default:
+		p.nextToken()
+		stmt.Value = p.parseSymbolExpression()
+	}
+	return stmt
 }
 
 func (p *Parser) parseString() ast.Expression {
@@ -271,7 +283,6 @@ func (p *Parser) parseSymbolExpression() ast.Expression {
 // deferentiate between a list and a grouped expression?
 func (p *Parser) parseConstantList(depth int) ast.Expression {
 	stmt := &ast.List{Token: p.curToken}
-
 
 	// If next token is our end, then we set back quoted context to false
 	p.nextToken()
