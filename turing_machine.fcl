@@ -1,21 +1,4 @@
-start: Q := '(
-  (0 right)
-  (3 if 1 goto 31)
-  (30 if 0 goto 35)
-  (36 if 9 goto 4)
-
-  (31 write 0)
-  (32 right)
-  (33 goto 3)
-
-  (35 write 1)
-
-  (4 left)
-
-  (41 if 0 goto 4)
-);
-       Right := '(9 0 0 0 0 9);
-       goto init;
+TuringMachine(Q, Right):
 init: Qtail := Q;
       Left := '();
       goto loop;
@@ -46,4 +29,5 @@ do_if:    Symbol := hd(tl(tl(Instruction)));
           if Symbol = hd(Right) goto jump else loop;
 jump: Qtail := new_tail(Nextlabel, Q); 
       goto loop;
+error: return list('syntax_error, Instruction);
 stop: return Right;
