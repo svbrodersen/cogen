@@ -3,6 +3,7 @@ package evaluator
 import (
 	"cogen/object"
 	"fmt"
+	"strings"
 )
 
 func head(arg object.Object) object.Object {
@@ -136,10 +137,11 @@ func newHeader(name_obj object.Object, dynVars ...object.Object) object.Object {
 
 	var name string
 	for i, subName := range v.Value {
+		s := strings.ReplaceAll(subName.String(), " ", "_")
 		if i == len(v.Value)-1 {
-			name += subName.String()
+			name += s
 		} else {
-			name += subName.String() + "_"
+			name += s + "_"
 		}
 	}
 	sym := object.Symbol{Value: name}
@@ -176,10 +178,11 @@ func newBlock(code_obj object.Object, name_obj object.Object) object.Object {
 	// 1. Construct the Name
 	name := ""
 	for i, subName := range name_list.Value {
+		s := strings.ReplaceAll(subName.String(), " ", "_")
 		if i == len(name_list.Value)-1 {
-			name += subName.String()
+			name += s
 		} else {
-			name += subName.String() + "_"
+			name += s + "_"
 		}
 	}
 
@@ -209,10 +212,11 @@ func isDone(name_obj object.Object, code_obj object.Object) object.Object {
 	}
 	name := ""
 	for i, n := range names.Value {
+		s := strings.ReplaceAll(n.String(), " ", "_")
 		if i == len(names.Value)-1 {
-			name += n.String()
+			name += s
 		} else {
-			name += n.String() + "_"
+			name += s + "_"
 		}
 	}
 
