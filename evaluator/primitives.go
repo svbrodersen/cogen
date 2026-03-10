@@ -295,12 +295,12 @@ func CallPrimitive(name string, args []object.Object) object.Object {
 			return newError("cons takes two inputs, got %d", len(args))
 		}
 		return cons(args[0], args[1])
-	case "newTail":
+	case "newTail", "new_tail":
 		if len(args) != 2 {
 			return newError("newTail takes two inputs, got %d", len(args))
 		}
 		return newTail(args[0], args[1])
-	case "newHeader":
+	case "newHeader", "new_header":
 		if len(args) < 1 {
 			return newError("newHeader takes at least 1 input, got %d", len(args))
 		}

@@ -296,12 +296,17 @@ func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 			Arguments: arguments,
 		}
 	case *ast.PrimitiveCall:
-		newStmt := &ast.PrimitiveCall{
-			Token:     v.Token,
-			Primitive: v.Primitive,
+		arguments := make([]ast.Expression, len(v.Arguments)+1)
+		arguments[0] = c.exprUplift(v.Primitive)
+		for i, arg := range v.Arguments {
+			arguments[i+1] = c.exprUplift(arg)
 		}
-		copy(newStmt.Arguments, v.Arguments)
-		return newStmt
+
+		return &ast.PrimitiveCall{
+			Token:     newToken(token.LPAREN, "("),
+			Primitive: newIdentifier("list"),
+			Arguments: arguments,
+		}
 	default:
 		return v
 	}
@@ -493,8 +498,6 @@ func (c *Cogen) processAssginment(stmt *ast.AssignmentStatement) {
 	switch expr := stmt.Right.(type) {
 	case *ast.CallExpression:
 		c.processCallAssginment(stmt, expr)
-	case *ast.PrimitiveCall:
-		c.processPrimitiveCall(stmt, expr)
 	default:
 		c.processRegularAssginment(stmt)
 	}
@@ -686,24 +689,6 @@ func (c *Cogen) processCallAssginment(
 	}
 }
 
-func (c *Cogen) processPrimitiveCall(
-	stmt *ast.AssignmentStatement,
-	call *ast.PrimitiveCall,
-) {
-	callCpy := *call
-	code := newIdentifier("code")
-	o := newIdentifier("o")
-	leftCpy := *stmt.Left
-	c.addStatement(codeAssign(
-		&ast.PrimitiveCall{
-			Token:     o.Token,
-			Primitive: o,
-			Arguments: []ast.Expression{code, underlineCall(&leftCpy, &callCpy)},
-		}))
-	// and update delta
-	c.removeDelta(stmt.Left)
-}
-
 func (c *Cogen) getOrigLabelStatement(stmt *ast.Label) (*ast.LabelStatement, error) {
 	for _, ogStmt := range c.OriginalProgram.Statements {
 		if stmt.String() == ogStmt.Label.String() {
@@ -811,7 +796,14 @@ func (c *Cogen) processIf(stmt *ast.IfStatement) {
 }
 
 func (c *Cogen) processReturn(stmt *ast.ReturnStatement) {
-	eu := c.exprUplift(stmt.ReturnValue)
+	vars := getVars(stmt.ReturnValue)
+	var rv ast.Expression
+	if c.isSubsetDelta(vars) {
+		rv = underlineReturn(stmt.ReturnValue)
+	} else {
+		eu := c.exprUplift(stmt.ReturnValue)
+		rv = underlineReturn(eu)
+	}
 	o := newIdentifier("o")
 	code := newIdentifier("code")
 	c.addStatement(&ast.ReturnStatement{
@@ -819,7 +811,7 @@ func (c *Cogen) processReturn(stmt *ast.ReturnStatement) {
 		ReturnValue: &ast.PrimitiveCall{
 			Token:     o.Token,
 			Primitive: o,
-			Arguments: []ast.Expression{code, underlineReturn(eu)},
+			Arguments: []ast.Expression{code, rv},
 		},
 	})
 }

@@ -178,7 +178,7 @@ func TestTuringMachine(t *testing.T) {
 }
 
 func TestCogenAckermann(t *testing.T) {
-	input, err := os.ReadFile("../cogen_ackermann.fcl")
+	input, err := os.ReadFile("../cogen_ackermann_m.fcl")
 	if err != nil {
 		t.Fatal("Failed to read file")
 	}
