@@ -33,6 +33,17 @@ func isTerminator(val string) bool {
 	return val == "if" || val == "goto" || val == "return"
 }
 
+// cleanIdentifier removes characters that are invalid in FCL identifiers
+func cleanIdentifier(s string) string {
+	// Remove characters that aren't valid in identifiers
+	invalidChars := []string{"'", "(", ")", "[", "]", "{", "}", " ", "\t", "\n"}
+	result := s
+	for _, char := range invalidChars {
+		result = strings.ReplaceAll(result, char, "")
+	}
+	return result
+}
+
 func list(a ...object.Object) object.Object {
 	aCopy := make([]object.Object, len(a))
 	copy(aCopy, a)
@@ -135,15 +146,21 @@ func newHeader(name_obj object.Object, dynVars ...object.Object) object.Object {
 	// 1. Create the Header Block content
 	headerBlock := object.List{Value: []object.Object{}}
 
-	var name string
-	for i, subName := range v.Value {
-		s := strings.ReplaceAll(subName.String(), " ", "_")
-		if i == len(v.Value)-1 {
-			name += s
-		} else {
-			name += s + "_"
-		}
+	// Only use the first element of the name list for the function name
+	// This avoids including data structures (like Q) in the function signature
+	if len(v.Value) == 0 {
+		return newError("newHeader expects a non-empty name list")
 	}
+
+	firstElem := v.Value[0]
+	var name string
+	if vs, ok := firstElem.(interface{ GetValue() string }); ok {
+		name = vs.GetValue()
+	} else {
+		name = firstElem.String()
+	}
+	name = cleanIdentifier(name)
+
 	sym := object.Symbol{Value: name}
 	headerBlock.Value = append(headerBlock.Value, &sym)
 	headerBlock.Value = append(headerBlock.Value, dynVars...)
@@ -176,9 +193,20 @@ func newBlock(code_obj object.Object, name_obj object.Object) object.Object {
 	}
 
 	// 1. Construct the Name
+	// Use GetValue() for symbols to avoid quotes, String() for others
+	// For lists (like Q), use "data" as a placeholder to avoid long names
 	name := ""
 	for i, subName := range name_list.Value {
-		s := strings.ReplaceAll(subName.String(), " ", "_")
+		var s string
+		if vs, ok := subName.(interface{ GetValue() string }); ok {
+			s = vs.GetValue()
+		} else if _, ok := subName.(*object.List); ok {
+			// For nested lists (like Q data), use a placeholder
+			s = "data"
+		} else {
+			s = subName.String()
+		}
+		s = cleanIdentifier(strings.ReplaceAll(s, " ", "_"))
 		if i == len(name_list.Value)-1 {
 			name += s
 		} else {
@@ -212,7 +240,16 @@ func isDone(name_obj object.Object, code_obj object.Object) object.Object {
 	}
 	name := ""
 	for i, n := range names.Value {
-		s := strings.ReplaceAll(n.String(), " ", "_")
+		var s string
+		if vs, ok := n.(interface{ GetValue() string }); ok {
+			s = vs.GetValue()
+		} else if _, ok := n.(*object.List); ok {
+			// For nested lists (like Q data), use a placeholder
+			s = "data"
+		} else {
+			s = n.String()
+		}
+		s = cleanIdentifier(strings.ReplaceAll(s, " ", "_"))
 		if i == len(names.Value)-1 {
 			name += s
 		} else {

@@ -49,7 +49,7 @@ func ConvertSExprToAST(input []object.Object) (*ast.Program, error) {
 	}
 
 	// 2. Parse Label Statements: ('ack0-2 (return ('3)))
-	for i := len(root)-1; i > 0; i-- {
+	for i := len(root) - 1; i > 0; i-- {
 		labelBlockObj, ok := root[i].(*object.List)
 		if !ok {
 			continue
@@ -160,7 +160,11 @@ func parseExpression(expr object.Object) (ast.Expression, error) {
 	case *object.List:
 		list := v.Value
 		if len(list) == 0 {
-			return nil, fmt.Errorf("empty expression list")
+			// Empty list - return an empty list expression
+			return &ast.List{
+				Token: token.Token{Type: token.LPAREN, Literal: "("},
+				Value: []ast.Expression{},
+			}, nil
 		}
 
 		// Helper to safely get the raw value of a symbol or string
@@ -173,8 +177,12 @@ func parseExpression(expr object.Object) (ast.Expression, error) {
 
 		first := getRaw(list[0])
 
-		// 1. Handle (quote 3) or (' 3) -> Length 2
-		if (first == "quote" || first == "'") && len(list) == 2 {
+		// 1. Handle (quote 3) or (' 3) or (' (tl Right)) -> First element is quote
+		if first == "quote" || first == "'" {
+			if len(list) < 2 {
+				return nil, fmt.Errorf("quote expression needs at least 1 argument")
+			}
+			// Handle (quote x) or (' x) where x could be a simple value or a list
 			val, err := parseExpression(list[1])
 			if err != nil {
 				return nil, err
@@ -193,6 +201,28 @@ func parseExpression(expr object.Object) (ast.Expression, error) {
 			}, nil
 		}
 
+		// 2b. Handle primitive calls like (hd x), (tl x), (cons a b), etc.
+		// These are function calls where first element is the function name
+		if first != "" && len(list) >= 2 {
+			prim := &ast.Identifier{
+				Token: token.Token{Type: token.IDENT, Literal: first},
+				Value: first,
+			}
+			arguments := make([]ast.Expression, len(list)-1)
+			for i := 1; i < len(list); i++ {
+				arg, err := parseExpression(list[i])
+				if err != nil {
+					return nil, err
+				}
+				arguments[i-1] = arg
+			}
+			return &ast.PrimitiveCall{
+				Token:     token.Token{Type: token.LPAREN, Literal: "("},
+				Primitive: prim,
+				Arguments: arguments,
+			}, nil
+		}
+
 		// 3. Handle Infix: (n + 1) or (n = 0) -> Length 3
 		if len(list) == 3 {
 			left, err := parseExpression(list[0])
@@ -200,7 +230,14 @@ func parseExpression(expr object.Object) (ast.Expression, error) {
 				return nil, err
 			}
 
-			op := getRaw(list[1])
+			// Handle case where operator is a list (e.g., (quote =))
+			var op string
+			if listObj, ok := list[1].(*object.List); ok {
+				// Operator is a list, try to extract the symbol
+				op = getRaw(listObj.Value[0])
+			} else {
+				op = getRaw(list[1])
+			}
 			if op == "" {
 				return nil, fmt.Errorf("expected operator symbol at index 1, got %s", list[1].Type())
 			}
@@ -241,6 +278,10 @@ func parseTargetLabel(input object.Object) ast.Label {
 		for _, item := range v.Value {
 			if s, ok := item.(object.ValueString); ok {
 				parts = append(parts, s.GetValue())
+			} else if _, ok := item.(*object.List); ok {
+				// For nested lists, use a simplified representation
+				// to avoid including the full data structure in the label
+				parts = append(parts, "data")
 			} else {
 				parts = append(parts, item.String())
 			}
@@ -249,6 +290,9 @@ func parseTargetLabel(input object.Object) ast.Label {
 	default:
 		fullLabel = input.String()
 	}
+
+	// Clean the identifier to remove invalid characters
+	fullLabel = cleanIdentifier(fullLabel)
 
 	return ast.Label{
 		Token: token.Token{Type: token.LABEL, Literal: fullLabel},
