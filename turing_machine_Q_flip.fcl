@@ -1,0 +1,25 @@
+TuringMachine(Right):
+init_data: Left := cons(hd(Right), '());
+        Right := tl(Right);
+        if ('1 = hd(Right)) jump_data_31_if_data_data_1 else loop_data_31_if_data_data_1;
+jump_data_31_if_data_data_1: Right := cons('0, tl(Right));
+        Left := cons(hd(Right), Left);
+        Right := tl(Right);
+        if ('1 = hd(Right)) jump_data_31_if_data_data_1 else loop_data_31_if_data_data_1;
+loop_data_31_if_data_data_1: if ('0 = hd(Right)) jump_data_35_if_data_data_0 else loop_data_35_if_data_data_0;
+loop_data_35_if_data_data_0: if ('9 = hd(Right)) jump_data_4_if_data_data_9 else loop_data_4_if_data_data_9;
+loop_data_4_if_data_data_9: Right := cons('0, tl(Right));
+        Left := cons(hd(Right), Left);
+        Right := tl(Right);
+        if ('1 = hd(Right)) jump_data_31_if_data_data_1 else loop_data_31_if_data_data_1;
+jump_data_4_if_data_data_9: Right := cons(hd(Left), Right);
+        Left := tl(Left);
+        if ('0 = hd(Right)) jump_data_4_if_data_data_0 else loop_data_4_if_data_data_0;
+jump_data_35_if_data_data_0: Right := cons('1, tl(Right));
+        Right := cons(hd(Left), Right);
+        Left := tl(Left);
+        if ('0 = hd(Right)) jump_data_4_if_data_data_0 else loop_data_4_if_data_data_0;
+jump_data_4_if_data_data_0: Right := cons(hd(Left), Right);
+        Left := tl(Left);
+        if ('0 = hd(Right)) jump_data_4_if_data_data_0 else loop_data_4_if_data_data_0;
+loop_data_4_if_data_data_0: return Right;
