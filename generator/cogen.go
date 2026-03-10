@@ -99,18 +99,71 @@ func (c *Cogen) processHeader() {
 	upliftL := c.labelUplift(c.OriginalProgram.Name)
 	initialLabel := c.OriginalProgram.Statements[0].Label
 
-	initLabel := c.newLabel(0, initialLabel.Value)
+	t := token.Token{Type: token.LABEL, Literal: "init"}
+	initLabel := &ast.LabelStatement{
+		Token: t,
+		Label: ast.Label{
+			Token: t,
+			Value: "init",
+		},
+		Statements: []ast.Statement{},
+	}
+	newheaderLabel := c.newLabel(0, initialLabel.Value)
 	gotoLabel := c.newLabel(1, initialLabel.Value)
 	codeIdentifier := newIdentifier("code")
 	newHeader := newIdentifier("newHeader")
 
+	assign_token := token.Token{
+		Type:    token.ASSIGN,
+		Literal: ":=",
+	}
+
 	initLabel.Statements = []ast.Statement{
 		&ast.AssignmentStatement{
-			Left: codeIdentifier,
-			Token: token.Token{
-				Type:    token.ASSIGN,
-				Literal: ":=",
+			Left:  codeIdentifier,
+			Token: assign_token,
+			Right: &ast.CallExpression{
+				Token: token.Token{
+					Type:    token.CALL,
+					Literal: "call",
+				},
+				Label: newheaderLabel.Label,
 			},
+		},
+		&ast.ReturnStatement{
+			Token: token.Token{
+				Type:    token.RETURN,
+				Literal: "return",
+			},
+			ReturnValue: &ast.PrimitiveCall{
+				Token: token.Token{
+					Type:    token.LPAREN,
+					Literal: "(",
+				},
+				Primitive: &ast.Identifier{
+					Token: token.Token{
+						Type:    token.IDENT,
+						Literal: "cleanOutput",
+					},
+					Value: "cleanOutput",
+				},
+				Arguments: []ast.Expression{
+					&ast.Identifier{
+						Token: token.Token{
+							Type:    token.IDENT,
+							Literal: "code",
+						},
+						Value: "code",
+					},
+				},
+			},
+		},
+	}
+
+	newheaderLabel.Statements = []ast.Statement{
+		&ast.AssignmentStatement{
+			Left:  codeIdentifier,
+			Token: assign_token,
 			Right: &ast.PrimitiveCall{
 				Token:     newHeader.Token,
 				Primitive: newHeader,
@@ -150,6 +203,7 @@ func (c *Cogen) processHeader() {
 	c.state.extension.Statements = append(
 		c.state.extension.Statements,
 		initLabel,
+		newheaderLabel,
 		twoLabel,
 	)
 }
@@ -671,7 +725,6 @@ func (c *Cogen) getCurLabelStatement(stmt *ast.Label) (*ast.LabelStatement, erro
 }
 
 func (c *Cogen) processIf(stmt *ast.IfStatement) {
-	fmt.Println(stmt.String())
 	variables := getVars(stmt.Cond)
 	if c.isSubsetDelta(variables) {
 		newStmt := &ast.IfStatement{
