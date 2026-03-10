@@ -38,7 +38,6 @@ func (c *Cogen) Gen(delta []int) (*ast.Program, error) {
 	if len(c.parser.Errors()) != 0 {
 		return nil, errors.New(c.parser.GetErrorMessage())
 	}
-	log.Println(c.OriginalProgram)
 	// Note the first var as static
 	c.state = &State{}
 	c.state.delta = make(map[string]*ast.Identifier, len(delta))
