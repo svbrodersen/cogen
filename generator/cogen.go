@@ -307,7 +307,6 @@ func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 			Arguments: arguments,
 		}
 	case *ast.Constant:
-			fmt.Printf("Default: type=%T, %s\n", exp, exp.String())
 			return &ast.PrimitiveCall{
 				Token:     newToken(token.LPAREN, "("),
 				Primitive: newIdentifier("list"),

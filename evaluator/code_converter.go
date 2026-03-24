@@ -179,13 +179,28 @@ func parseExpression(expr object.Object) (ast.Expression, error) {
 
 		// 1. Handle (quote 3) or (' 3) or (' (tl Right)) -> First element is quote
 		if first == "quote" || first == "'" {
+			fmt.Printf("List[1]: %s, %T\n", list[1], list[1])
 			if len(list) < 2 {
 				return nil, fmt.Errorf("quote expression needs at least 1 argument")
 			}
+			// If the item being quoted is already a Symbol (constant), don't wrap it again
+			// if sym, ok := list[1].(*object.Symbol); ok {
+			// 	return &ast.SymbolExpression{
+			// 		Token: token.Token{Type: token.IDENT, Literal: sym.Value},
+			// 		Value: sym.Value,
+			// 	}, nil
+			// }
+
 			// Handle (quote x) or (' x) where x could be a simple value or a list
 			val, err := parseExpression(list[1])
 			if err != nil {
 				return nil, err
+			}
+
+			// If the item being quoted is already a constant, don't wrap it again
+			if lst, ok := val.(*ast.Constant); ok {
+				fmt.Printf("List[1]: %s, %T\n", list[1], list[1])
+				return lst, nil
 			}
 			return &ast.Constant{
 				Token: token.Token{Type: token.QUOTE, Literal: "'"},
@@ -286,9 +301,9 @@ func parseExpression(expr object.Object) (ast.Expression, error) {
 		return &ast.Constant{
 			token.Token{Type: token.CONSTANT, Literal: "'"},
 			&ast.List{
-			Token: token.Token{Type: token.LPAREN, Literal: "("},
-			Value: elements,
-		}}, nil
+				Token: token.Token{Type: token.LPAREN, Literal: "("},
+				Value: elements,
+			}}, nil
 	}
 
 	return nil, fmt.Errorf("unknown expression type %s for value: %s", expr.Type(), expr.String())
