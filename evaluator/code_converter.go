@@ -203,7 +203,17 @@ func parseExpression(expr object.Object) (ast.Expression, error) {
 
 		// 2b. Handle primitive calls like (hd x), (tl x), (cons a b), etc.
 		// These are function calls where first element is the function name
-		if first != "" && len(list) >= 2 {
+		// BUT: If len(list) == 3 and middle element is an infix operator, handle as infix instead
+		isInfix := false
+		if len(list) == 3 {
+			midOp := getRaw(list[1])
+			// Check if middle element is a known infix operator
+			if isInfixOperator(midOp) {
+				isInfix = true
+			}
+		}
+
+		if first != "" && len(list) >= 2 && !isInfix && isPrimitiveName(first) {
 			prim := &ast.Identifier{
 				Token: token.Token{Type: token.IDENT, Literal: first},
 				Value: first,
@@ -262,6 +272,23 @@ func parseExpression(expr object.Object) (ast.Expression, error) {
 				Value: &ast.Identifier{Token: token.Token{Type: token.IDENT, Literal: first}, Value: first},
 			}, nil
 		}
+
+		// 5. Fallback: Parse as a regular list expression for unknown constructs
+		elements := make([]ast.Expression, len(list))
+		for i := 0; i < len(list); i++ {
+			elem, err := parseExpression(list[i])
+			if err != nil {
+				return nil, err
+			}
+			elements[i] = elem
+		}
+
+		return &ast.Constant{
+			token.Token{Type: token.CONSTANT, Literal: "'"},
+			&ast.List{
+			Token: token.Token{Type: token.LPAREN, Literal: "("},
+			Value: elements,
+		}}, nil
 	}
 
 	return nil, fmt.Errorf("unknown expression type %s for value: %s", expr.Type(), expr.String())
@@ -298,4 +325,26 @@ func parseTargetLabel(input object.Object) ast.Label {
 		Token: token.Token{Type: token.LABEL, Literal: fullLabel},
 		Value: fullLabel,
 	}
+}
+
+// isInfixOperator checks if a string is a known infix operator
+func isInfixOperator(op string) bool {
+	infixOps := []string{"=", "!=", "<", ">", "+", "-", "*", "/"}
+	for _, infixOp := range infixOps {
+		if op == infixOp {
+			return true
+		}
+	}
+	return false
+}
+
+// isPrimitiveName checks if a string is a known primitive call operator
+func isPrimitiveName(name string) bool {
+	primitives := []string{"hd", "tl", "o", "list", "cons", "newTail", "new_tail", "newHeader", "new_header", "newBlock", "isDone", "cleanOutput"}
+	for _, prim := range primitives {
+		if name == prim {
+			return true
+		}
+	}
+	return false
 }

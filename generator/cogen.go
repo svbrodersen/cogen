@@ -306,7 +306,23 @@ func (c *Cogen) exprUplift(exp ast.Expression) ast.Expression {
 			Primitive: newIdentifier("list"),
 			Arguments: arguments,
 		}
+	case *ast.Constant:
+			fmt.Printf("Default: type=%T, %s\n", exp, exp.String())
+			return &ast.PrimitiveCall{
+				Token:     newToken(token.LPAREN, "("),
+				Primitive: newIdentifier("list"),
+				Arguments: []ast.Expression{
+					&ast.Constant{
+						Token: newToken(token.CONSTANT, "'"),
+						Value: newSymbol("quote"),
+					},
+					v,
+				},
+			}
+		
+	// TODO: We are hitting this case, which we should not.
 	default:
+		fmt.Printf("Default: type=%T, %s\n", exp, exp.String())
 		return v
 	}
 	return nil
