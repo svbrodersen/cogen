@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FCL Code Generator & Evaluator</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>FCL Code Generator & Evaluator</h1>
+            <p class="subtitle">Flow Chart Language Web Interface</p>
+        </header>
+
+        <div class="mode-toggle">
+            <span class="toggle-label">Mode:</span>
+            <div class="toggle-switch">
+                <input type="radio" id="mode-generator" name="mode" value="generator" checked>
+                <label for="mode-generator">Code Generator</label>
+                <input type="radio" id="mode-evaluator" name="mode" value="evaluator">
+                <label for="mode-evaluator">Evaluator</label>
+                <span class="toggle-slider"></span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="input-section">
+                <div class="section-header">
+                    <h2>Program</h2>
+                    <div class="example-select">
+                        <label for="example-select">Load Example:</label>
+                        <select id="example-select">
+                            <option value="">-- Select --</option>
+                            <option value="pow">pow(m, n)</option>
+                            <option value="ackermann">ackermann(m, n)</option>
+                            <option value="turing">turing machine</option>
+                        </select>
+                    </div>
+                </div>
+                <textarea id="program-input" placeholder="Enter your FCL program here..."></textarea>
+            </div>
+
+            <div class="params-section">
+                <h2 id="params-label">Delta (static parameter indices)</h2>
+                <input type="text" id="params-input" placeholder="e.g., 0, 2 (comma-separated indices)">
+                <p id="params-help" class="help-text">
+                    For code generator: enter indices of parameters to treat as static (compile-time constants)
+                </p>
+            </div>
+
+            <button id="run-btn">Run</button>
+
+            <div class="output-section">
+                <h2>Output</h2>
+                <pre id="output-display">Results will appear here...</pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
