@@ -16,10 +16,11 @@ const (
 	ERROR
 	STRING
 	LIST
+	CODE_OUTPUT
 )
 
 func (ot ObjectType) String() string {
-	names := [...]string{"INTEGER", "BOOLEAN", "SYMBOL", "NULL", "RETURN VALUE", "ERROR", "STRING", "LIST"}
+	names := [...]string{"INTEGER", "BOOLEAN", "SYMBOL", "NULL", "RETURN VALUE", "ERROR", "STRING", "LIST", "CODE OUTPUT"}
 	if int(ot) < 0 || int(ot) >= len(names) {
 		return fmt.Sprintf("ObjectType(%d)", ot)
 	}
@@ -135,3 +136,10 @@ type Error struct {
 
 func (e *Error) Type() ObjectType { return ERROR }
 func (e *Error) String() string   { return "ERROR: " + e.Message }
+
+type CodeOutput struct {
+	Value string
+}
+
+func (co *CodeOutput) Type() ObjectType { return CODE_OUTPUT }
+func (co *CodeOutput) String() string   { return co.Value }

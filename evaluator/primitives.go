@@ -2,7 +2,6 @@ package evaluator
 
 import (
 	"cogen/object"
-	"fmt"
 	"strings"
 )
 
@@ -308,8 +307,7 @@ func cleanOutput(code_obj object.Object) object.Object {
 		return newError("cleanOutput failed. Got input: %s\n\n Failed with error %s", code_obj.String(), err)
 	}
 
-	fmt.Println(prog.String())
-	return &object.Integer{Value: 0}
+	return &object.CodeOutput{Value: prog.String()}
 }
 
 func CallPrimitive(name string, args []object.Object) object.Object {
