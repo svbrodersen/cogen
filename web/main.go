@@ -97,7 +97,7 @@ func evaluateHandler(w http.ResponseWriter, r *http.Request) {
 
 	if len(parsedProgram.Variables) > 0 {
 		expectedArgs := len(parsedProgram.Variables)
-		if len(req.Args) < expectedArgs {
+		if len(req.Args) != expectedArgs {
 			sendError(w, fmt.Sprintf("Program expects %d arguments, got %d", expectedArgs, len(req.Args)))
 			return
 		}
@@ -111,7 +111,7 @@ func evaluateHandler(w http.ResponseWriter, r *http.Request) {
 	e := evaluator.New(parsedProgram)
 	evaluated := e.Eval(parsedProgram, env)
 	if evaluated != nil {
-			sendResult(w, evaluated.String())
+		sendResult(w, evaluated.String())
 	} else {
 		sendResult(w, "nil")
 	}

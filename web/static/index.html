@@ -17,7 +17,7 @@
             <span class="toggle-label">Mode:</span>
             <div class="toggle-switch">
                 <input type="radio" id="mode-generator" name="mode" value="generator" checked>
-                <label for="mode-generator">Code Generator</label>
+                <label for="mode-generator">Generator</label>
                 <input type="radio" id="mode-evaluator" name="mode" value="evaluator">
                 <label for="mode-evaluator">Evaluator</label>
                 <span class="toggle-slider"></span>
@@ -43,17 +43,25 @@
 
             <div class="params-section">
                 <h2 id="params-label">Delta (static parameter indices)</h2>
-                <input type="text" id="params-input" placeholder="e.g., 0, 2 (comma-separated indices)">
-                <p id="params-help" class="help-text">
-                    For code generator: enter indices of parameters to treat as static (compile-time constants)
-                </p>
+                <div id="generator-params">
+                    <input type="text" id="params-input" placeholder="e.g., 0, 2 (comma-separated indices)">
+                    <p class="help-text">Enter indices of parameters to treat as static (compile-time constants)</p>
+                </div>
+                <div id="evaluator-params" style="display: none;">
+                    <div class="arg-count-section">
+                        <label for="arg-count">Number of arguments:</label>
+                        <input type="number" id="arg-count" min="0" value="0">
+                    </div>
+                    <div id="arg-inputs-container"></div>
+                    <p id="arg-count-help" class="help-text"></p>
+                </div>
             </div>
 
             <button id="run-btn">Run</button>
 
             <div class="output-section">
                 <h2>Output</h2>
-                <pre id="output-display">Results will appear here...</pre>
+                <pre id="output-display" tabindex="0">Results will appear here...</pre>
             </div>
         </div>
     </div>

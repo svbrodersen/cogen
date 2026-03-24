@@ -66,11 +66,11 @@ function init() {
     const evaluatorRadio = document.getElementById('mode-evaluator');
     const paramsInput = document.getElementById('params-input');
     const paramsLabel = document.getElementById('params-label');
-    const paramsHelp = document.getElementById('params-help');
     const runBtn = document.getElementById('run-btn');
     const exampleSelect = document.getElementById('example-select');
     const programInput = document.getElementById('program-input');
     const outputDisplay = document.getElementById('output-display');
+    const argCountInput = document.getElementById('arg-count');
 
     generatorRadio.addEventListener('change', () => setMode('generator'));
     evaluatorRadio.addEventListener('change', () => setMode('evaluator'));
@@ -78,7 +78,11 @@ function init() {
     exampleSelect.addEventListener('change', loadExample);
     programInput.addEventListener('input', (e) => { state.program = e.target.value; });
     paramsInput.addEventListener('input', handleParamsChange);
+    if (argCountInput) {
+        argCountInput.addEventListener('input', handleArgCountChange);
+    }
 
+    setupOutputSelection();
     updateUI();
 }
 
@@ -89,17 +93,18 @@ function setMode(mode) {
 
 function updateUI() {
     const paramsLabel = document.getElementById('params-label');
-    const paramsHelp = document.getElementById('params-help');
-    const paramsInput = document.getElementById('params-input');
+    const generatorParams = document.getElementById('generator-params');
+    const evaluatorParams = document.getElementById('evaluator-params');
 
     if (state.mode === 'generator') {
         paramsLabel.textContent = 'Delta (static parameter indices)';
-        paramsInput.placeholder = 'e.g., 0, 2 (comma-separated indices)';
-        paramsHelp.textContent = 'Enter indices of parameters to treat as static (compile-time constants)';
+        generatorParams.style.display = 'block';
+        evaluatorParams.style.display = 'none';
     } else {
         paramsLabel.textContent = 'Arguments (runtime values)';
-        paramsInput.placeholder = 'e.g., 2, 3 (comma-separated arguments)';
-        paramsHelp.textContent = 'Enter runtime values for the function parameters';
+        generatorParams.style.display = 'none';
+        evaluatorParams.style.display = 'block';
+        updateArgInputs();
     }
 }
 
@@ -118,12 +123,36 @@ function loadExample() {
 
 function handleParamsChange(e) {
     const value = e.target.value.trim();
-    const paramsInput = document.getElementById('params-input');
+    state.delta = parseDelta(value);
+}
 
-    if (state.mode === 'generator') {
-        state.delta = parseDelta(value);
-    } else {
-        state.args = value ? value.split(',').map(s => s.trim()) : [];
+function handleArgCountChange(e) {
+    const count = parseInt(e.target.value, 10) || 0;
+    state.args = new Array(count).fill('');
+    updateArgInputs();
+}
+
+function updateArgInputs() {
+    const container = document.getElementById('arg-inputs-container');
+    const argCountHelp = document.getElementById('arg-count-help');
+    const count = parseInt(document.getElementById('arg-count').value, 10) || 0;
+
+    container.innerHTML = '';
+    argCountHelp.textContent = `Enter ${count} argument${count !== 1 ? 's' : ''} for the program`;
+
+    for (let i = 0; i < count; i++) {
+        const row = document.createElement('div');
+        row.className = 'arg-input-row';
+        row.innerHTML = `
+            <label for="arg-${i}">arg${i}:</label>
+            <input type="text" id="arg-${i}" data-index="${i}" placeholder="Enter argument value">
+        `;
+        container.appendChild(row);
+
+        const input = row.querySelector(`#arg-${i}`);
+        input.addEventListener('input', (e) => {
+            state.args[parseInt(e.target.dataset.index, 10)] = e.target.value;
+        });
     }
 }
 
@@ -138,7 +167,6 @@ function parseDelta(value) {
 async function run() {
     const programInput = document.getElementById('program-input');
     const outputDisplay = document.getElementById('output-display');
-    const paramsInput = document.getElementById('params-input');
 
     const program = programInput.value.trim();
     if (!program) {
@@ -146,7 +174,10 @@ async function run() {
         return;
     }
 
-    handleParamsChange({ target: paramsInput });
+    if (state.mode === 'generator') {
+        const paramsInput = document.getElementById('params-input');
+        handleParamsChange({ target: paramsInput });
+    }
 
     outputDisplay.textContent = 'Processing...';
     outputDisplay.className = '';
@@ -206,6 +237,21 @@ function showOutput(message, isError) {
     const outputDisplay = document.getElementById('output-display');
     outputDisplay.textContent = message;
     outputDisplay.className = isError ? 'error' : 'success';
+}
+
+function setupOutputSelection() {
+    const outputDisplay = document.getElementById('output-display');
+    
+    outputDisplay.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'a') {
+            e.preventDefault();
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(outputDisplay);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+    });
 }
 
 document.addEventListener('DOMContentLoaded', init);
