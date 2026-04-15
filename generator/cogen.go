@@ -525,8 +525,9 @@ func (c *Cogen) processAssginment(stmt *ast.AssignmentStatement) {
 					Arguments: []ast.Expression{code, underlineAssign(&leftCpy, upliftE)},
 				}))
 			c.removeDelta(stmt.Left)
+		} else {
+			c.processRegularAssginment(stmt)
 		}
-		
 	default:
 		c.processRegularAssginment(stmt)
 	}
