@@ -179,7 +179,6 @@ func parseExpression(expr object.Object) (ast.Expression, error) {
 
 		// 1. Handle (quote 3) or (' 3) or (' (tl Right)) -> First element is quote
 		if first == "quote" || first == "'" {
-			fmt.Printf("List[1]: %s, %T\n", list[1], list[1])
 			if len(list) < 2 {
 				return nil, fmt.Errorf("quote expression needs at least 1 argument")
 			}
