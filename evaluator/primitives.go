@@ -58,6 +58,10 @@ func cons(a object.Object, b object.Object) object.Object {
 	return &object.List{Value: []object.Object{a, b}}
 }
 
+func Gen(a object.Object) object.Object {
+	return a
+}
+
 // o appends inputs to the top-most block on the stack.
 // If the appended instruction starts with if/goto/return, the block is popped and added to the Result Program.
 func o(code_obj object.Object, inputs ...object.Object) object.Object {
@@ -299,7 +303,7 @@ func isDone(name_obj object.Object, code_obj object.Object) object.Object {
 func cleanOutput(code_obj object.Object) object.Object {
 	code, ok := code_obj.(*object.List)
 	if !ok {
-		return newError("is_done expects second argument (code) to be a list, got %s", code_obj.Type())
+		return newError("cleanOutput expects second argument (code) to be a list, got %s", code_obj.Type())
 	}
 
 	prog, err := ConvertSExprToAST(code.Value)
@@ -356,9 +360,14 @@ func CallPrimitive(name string, args []object.Object) object.Object {
 		return isDone(args[0], args[1])
 	case "cleanOutput":
 		if len(args) != 1 {
-			return newError("cleanOutput expects a single output, got %d", len(args))
+			return newError("cleanOutput expects a single input, got %d", len(args))
 		}
 		return cleanOutput(args[0])
+	case "Gen":
+		if len(args) != 1 {
+			return newError("Gen expects a single input, got %d", len(args))
+		}
+		return Gen(args[0])
 	default:
 		return newError("undefined primitive %s", name)
 	}

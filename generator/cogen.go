@@ -512,6 +512,21 @@ func (c *Cogen) processAssginment(stmt *ast.AssignmentStatement) {
 	switch expr := stmt.Right.(type) {
 	case *ast.CallExpression:
 		c.processCallAssginment(stmt, expr)
+	case *ast.PrimitiveCall:
+		if (expr.Primitive.String() == "Gen") {
+			upliftE := c.exprUplift(stmt.Right)
+			code := newIdentifier("code")
+			o := newIdentifier("o")
+			leftCpy := *stmt.Left
+			c.addStatement(codeAssign(
+				&ast.PrimitiveCall{
+					Token:     o.Token,
+					Primitive: o,
+					Arguments: []ast.Expression{code, underlineAssign(&leftCpy, upliftE)},
+				}))
+			c.removeDelta(stmt.Left)
+		}
+		
 	default:
 		c.processRegularAssginment(stmt)
 	}

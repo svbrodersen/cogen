@@ -355,7 +355,7 @@ func isInfixOperator(op string) bool {
 
 // isPrimitiveName checks if a string is a known primitive call operator
 func isPrimitiveName(name string) bool {
-	primitives := []string{"hd", "tl", "o", "list", "cons", "newTail", "new_tail", "newHeader", "new_header", "newBlock", "isDone", "cleanOutput"}
+	primitives := []string{"hd", "tl", "o", "list", "cons", "newTail", "new_tail", "newHeader", "new_header", "newBlock", "isDone", "cleanOutput", "Gen"}
 	for _, prim := range primitives {
 		if name == prim {
 			return true
